@@ -1,0 +1,42 @@
+# Core scientific stack
+numpy
+pandas
+scipy
+
+# Wavelet transforms
+PyWavelets
+
+# Machine Learning / RL
+stable-baselines3
+gymnasium
+torch
+
+# Data loading and Yahoo fallback for backtesting
+yfinance
+
+# Plotting + Visualization
+matplotlib
+seaborn
+
+# Alpaca SDK (REST & Market Data)
+alpaca-py==0.21.0
+websockets
+
+# Config + Utilities
+PyYAML
+python-dotenv
+requests
+
+# Logging + formatting
+loguru
+
+# Metrics + statistics
+statsmodels
+
+# For exporting results
+tabulate
+
+# If using notebooks
+jupyter
+
+pykalman

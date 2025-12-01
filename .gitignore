@@ -1,0 +1,26 @@
+﻿# Ignore Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment + secrets
+.env
+*.env
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Jupyter / VSCode
+.ipynb_checkpoints/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# OS junk
+Thumbs.db
+.DS_Store
