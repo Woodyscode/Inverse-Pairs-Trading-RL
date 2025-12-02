@@ -70,24 +70,33 @@ def plot_return_distribution(returns: pd.Series,
 # =============================================================================
 #                          MONTHLY RETURNS HEATMAP
 # =============================================================================
-def plot_monthly_heatmap(equity_curve: pd.Series,
-                         title="Monthly Return Heatmap"):
+def plot_monthly_heatmap(equity_curve):
+    df = equity_curve.pct_change().dropna().to_frame("return")
+    df["Year"] = df.index.year
+    df["Month"] = df.index.month
 
-    monthly = equity_curve.pct_change().resample("M").apply(lambda x: (1+x).prod()-1)
-    monthly.index = monthly.index.to_period("M")
+    # FIX: pivot requires keyword arguments
+    heatmap = df.pivot(
+        index="Year",
+        columns="Month",
+        values="return"
+    )
 
-    df = monthly.to_frame("return").assign(
-        Year=lambda x: x.index.year,
-        Month=lambda x: x.index.month
-    ).pivot("Year", "Month", "return")
+    import seaborn as sns
+    import matplotlib.pyplot as plt
 
-    plt.figure(figsize=(12, 6))
-    sns.heatmap(df, cmap="RdYlGn", center=0, annot=True, fmt=".1%", linewidths=0.5)
-    plt.title(title)
-    plt.xlabel("Month")
-    plt.ylabel("Year")
-    plt.tight_layout()
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(
+        heatmap,
+        annot=True,
+        fmt=".2%",
+        cmap="RdYlGn",
+        center=0
+    )
+
+    plt.title("Monthly Return Heatmap")
     plt.show()
+
 
 
 # =============================================================================

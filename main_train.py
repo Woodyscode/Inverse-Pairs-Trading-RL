@@ -2,6 +2,8 @@ import yaml
 import numpy as np
 import random
 import torch
+import psutil
+import os
 
 from setup_paths import *
 
@@ -11,8 +13,6 @@ from data.loaders import DataLoader
 
 # === RL / ENV / BACKTEST ===
 from env.inverse_pairs_env import InversePairsTradingEnv
-from agents.ppo_agent import PPOAgent
-from backtest.backtester import Backtester
 from backtest.walkforward import WalkForwardEngine
 
 from utils.logger import get_logger
@@ -20,34 +20,34 @@ logger = get_logger("MainTrain")
 
 
 # ======================================================================
-#                  ENV FACTORY (Unified API for WF + Training)
+#                    ENV FACTORY (FULL SIGNATURE)
 # ======================================================================
-def build_env(config, ohlcv_slice, pairs, price_index):
+def build_env(config, ohlcv_slice, pairs, price_index, features, metrics, feature_dims):
     """
-    Standard factory used by WalkForwardEngine and fixed split mode.
+    Unified factory for WF environment construction.
+    WalkForwardEngine guarantees the correct inputs.
     """
+    logger.info(
+        f"[MainTrain] Building environment: {len(pairs)} pairs, dims={sum(feature_dims)}"
+    )
+
     return InversePairsTradingEnv(
         ohlcv=ohlcv_slice,
         pairs=pairs,
         config=config,
         price_index=price_index,
+        features=features,
+        metrics=metrics,
+        feature_dims=feature_dims,
     )
 
 
 # ======================================================================
-#                          BACKTEST WRAPPER
-# ======================================================================
-def backtest_runner(agent, env, config):
-    tester = Backtester(agent=agent, env=env, config=config)
-    return tester.run()
-
-
-# ======================================================================
-#                     SPY BENCHMARK LOADING HELPER
+#                    SPY BENCHMARK LOADING HELPER
 # ======================================================================
 def load_benchmark(price_index):
     """
-    Loads SPY as benchmark, aligned to master price_index.
+    Loads SPY aligned to the master price index.
     """
     logger.info("[MainTrain] Loading SPY benchmark...")
 
@@ -62,64 +62,24 @@ def load_benchmark(price_index):
     )
 
     if "SPY" not in spy.columns:
-        raise RuntimeError("[MainTrain] SPY download failed: missing 'SPY' column.")
+        raise RuntimeError("[MainTrain] SPY fetch failed.")
 
-    spy_curve = spy["SPY"].reindex(price_index).ffill()
-    spy_curve = spy_curve / spy_curve.iloc[0]
-    spy_curve.name = "SPY"
+    curve = spy["SPY"].reindex(price_index).ffill()
+    curve = curve / curve.iloc[0]
+    curve.name = "SPY"
 
-    return spy_curve
+    logger.info("[MainTrain] SPY benchmark loaded successfully.")
+    return curve
 
 
 # ======================================================================
-#                     FIXED TRAIN/TEST MODE HELPERS
+#                    RAM / CPU Diagnostics
 # ======================================================================
-def fixed_train_test_split(ohlcv, returns, price_index, config):
-    """
-    Performs an 80/20 split when walkforward is OFF.
-    Includes pair selection.
-    """
-    logger.info("[MainTrain] Walk-forward disabled — Using 80/20 split.")
-
-    total_days = len(price_index)
-    split = int(total_days * 0.8)
-
-    # --- Slicing ---
-    train_ohlcv = {k: df.iloc[:split] for k, df in ohlcv.items()}
-    test_ohlcv  = {k: df.iloc[split:] for k, df in ohlcv.items()}
-
-    train_ret = returns.iloc[:split]
-    test_ret  = returns.iloc[split:]
-
-    # --- Pair selection using WF engine’s selector ---
-    wf_tmp = WalkForwardEngine(
-        ohlcv=ohlcv,
-        returns=returns,
-        price_index=price_index,
-        config=config,
-        env_builder=build_env,
-    )
-    pairs = wf_tmp._select_pairs(train_ohlcv, train_ret)
-
-    # --- Train env ---
-    env_train = build_env(
-        config=config,
-        ohlcv_slice=train_ohlcv,
-        pairs=pairs,
-        price_index=price_index[:split]
-    )
-    agent = PPOAgent(config, env_train)
-    agent.train(config["training"]["timesteps"])
-
-    # --- Test env ---
-    env_test = build_env(
-        config=config,
-        ohlcv_slice=test_ohlcv,
-        pairs=pairs,
-        price_index=price_index[split:]
-    )
-
-    return backtest_runner(agent, env_test, config)
+def log_system_usage():
+    process = psutil.Process(os.getpid())
+    mem = process.memory_info().rss / (1024 ** 2)
+    logger.info(f"[System] Process Memory Usage: {mem:.2f} MB")
+    logger.info(f"[System] CPU Count: {psutil.cpu_count(logical=True)}")
 
 
 # ======================================================================
@@ -134,55 +94,70 @@ def main(config_path="config/config.yaml"):
     np.random.seed(42)
     random.seed(42)
 
-    logger.info("[MainTrain] Loading configuration...")
+    logger.info("====================================================")
+    logger.info("================= MAIN TRAIN START =================")
+    logger.info("====================================================")
+    
+    log_system_usage()
+
+    # ----------------------------------------------------------
+    # 1. Load configuration
+    # ----------------------------------------------------------
+    logger.info("[MainTrain] Loading configuration file...")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
 
-    # =================================================================
-    # (1) DATA PREPARATION
-    # =================================================================
+    # ----------------------------------------------------------
+    # 2. Data Preparation
+    # ----------------------------------------------------------
+    logger.info("[MainTrain] Preparing full dataset...")
+
     ohlcv, returns, price_index = prepare_data(config)
     config["price_index"] = price_index
 
-    logger.info("[MainTrain] Data loaded:")
+    logger.info("\n[MainTrain] ===== DATA SUMMARY =====")
     for key, df in ohlcv.items():
-        logger.info(f"  {key}: {df.shape}")
-    logger.info(f"  Returns: {returns.shape}")
+        logger.info(f"  {key:10s}: shape={df.shape}, start={df.index[0]}, end={df.index[-1]}")
+    logger.info(f"  RETURNS: {returns.shape}")
+    logger.info("====================================\n")
 
-    # =================================================================
-    # (2) Load benchmark curve
-    # =================================================================
+    # ----------------------------------------------------------
+    # 3. Benchmark
+    # ----------------------------------------------------------
+    logger.info("[MainTrain] Preparing benchmark curve...")
     spy_curve = load_benchmark(price_index)
     config["benchmark_curve"] = spy_curve
 
-    # =================================================================
-    # (3) WALK-FORWARD MODE
-    # =================================================================
+    # ----------------------------------------------------------
+    # 4. Walk Forward Optimization (EN + Feature Computation)
+    # ----------------------------------------------------------
     if config["walkforward"]["enabled"]:
-        logger.info("[MainTrain] Running Walk-Forward Optimization...")
+        logger.info("[MainTrain] Walk-Forward Optimization ENABLED.")
+        logger.info("[MainTrain] Creating WalkForwardEngine...")
 
         wf = WalkForwardEngine(
             ohlcv=ohlcv,
             returns=returns,
             price_index=price_index,
             config=config,
-            env_builder=build_env,   # same factory
+            env_builder=build_env,   # Full signature factory
         )
-        return wf.run()
 
-    # =================================================================
-    # (4) FIXED 80/20 MODE
-    # =================================================================
-    return fixed_train_test_split(
-        ohlcv=ohlcv,
-        returns=returns,
-        price_index=price_index,
-        config=config,
-    )
+        logger.info("[MainTrain] Running WF engine...")
+        results = wf.run()
+
+        logger.info("[MainTrain] Walk-Forward run complete.")
+        logger.info(f"[MainTrain] Final stitched equity value: {results['equity_curve'].iloc[-1]:,.2f}")
+
+        return results
+
+    else:
+        logger.error("[MainTrain] ERROR: Walk-forward disabled. The current architecture REQUIRES WF.")
+        raise RuntimeError("Walk-forward must be enabled for EN + feature pipeline.")
 
 
 # ======================================================================
-#                                RUN
+#                              RUN
 # ======================================================================
 if __name__ == "__main__":
     main()

@@ -1,13 +1,12 @@
 import numpy as np
 import pandas as pd
 
+_EPS = 1e-12
+
 
 # =====================================================================
 #                                HELPERS
 # =====================================================================
-
-_EPS = 1e-12
-
 
 def _to_np(x):
     return np.asarray(x, dtype=float)
@@ -88,9 +87,6 @@ def calculate_ulcer_index(values):
 
 
 def calculate_cdar(returns, alpha=0.95):
-    """
-    Conditional Drawdown-at-Risk: expected drawdown beyond VaR.
-    """
     values = (1 + returns).cumprod()
     peaks = np.maximum.accumulate(values)
     dd = (values - peaks) / peaks
@@ -217,52 +213,56 @@ def calculate_capture_ratios(strategy, benchmark):
     up_cap = up["s"].mean() / (up["b"].mean() + _EPS) if len(up) else np.nan
     down_cap = down["s"].mean() / (down["b"].mean() + _EPS) if len(down) else np.nan
 
+    # ensure positive down capture ratio
+    down_cap = abs(down_cap)
+
     return float(up_cap), float(down_cap)
 
 
 # =====================================================================
-#                     MONTHLY RETURNS (REAL CALENDAR)
+#                     MONTHLY RETURNS (CALENDAR CORRECT)
 # =====================================================================
 
 def calculate_monthly_returns(equity_curve):
-    monthly = equity_curve.pct_change().resample("M").apply(lambda x: (1+x).prod() - 1)
+    monthly = (
+        equity_curve
+        .resample("M")
+        .apply(lambda x: x.iloc[-1] / x.iloc[0] - 1 if len(x) > 1 else 0)
+    )
     return monthly.round(4).to_dict()
 
 
 # =====================================================================
-#                     MAIN AGGREGATOR — SINGLE API
+#                     MAIN METRIC AGGREGATOR
 # =====================================================================
 
-def compute_all_metrics(
-    equity_curve: pd.Series,
-    benchmark_curve: pd.Series | None,
-    trade_pnls
-):
+def compute_all_metrics(equity_curve, benchmark_curve, trade_pnls):
+
     values = equity_curve.values
     dates = equity_curve.index
-    returns = equity_curve.pct_change().dropna().values
+    returns = equity_curve.pct_change().dropna()
 
     years = len(values) / 252
 
     # Core
     cagr = calculate_cagr(values, years)
-    vol = calculate_volatility(returns)
-    sharpe = calculate_sharpe(returns)
-    sortino = calculate_sortino(returns)
+    vol = calculate_volatility(returns.values)
+    sharpe = calculate_sharpe(returns.values)
+    sortino = calculate_sortino(returns.values)
     max_dd = calculate_max_drawdown(values)
     dd_duration = calculate_drawdown_duration(values)
     ulcer = calculate_ulcer_index(values)
-    cdar = calculate_cdar(returns)
+    cdar = calculate_cdar(returns.values)
 
     mar = calculate_mar(cagr, max_dd)
     calmar36 = calculate_calmar_36m(values, dates)
 
-    skew = float(pd.Series(returns).skew())
-    kurt = float(pd.Series(returns).kurt())
-    gpr = calculate_gain_to_pain(returns)
+    skew = float(returns.skew())
+    kurt = float(returns.kurt())
+    gpr = calculate_gain_to_pain(returns.values)
 
     # Monthly
-    monthly = calculate_monthly_returns(equity_curve)
+    monthly_returns = calculate_monthly_returns(equity_curve)
 
     # Trades
     win_rate = calculate_win_rate(trade_pnls)
@@ -273,11 +273,25 @@ def compute_all_metrics(
 
     # Benchmark
     if benchmark_curve is not None:
-        bench_r = benchmark_curve.pct_change().dropna().reindex(dates).dropna().values
-        alpha, beta = calculate_alpha_beta(returns, bench_r)
-        te = calculate_tracking_error(returns, bench_r)
-        ir = calculate_information_ratio(returns, bench_r)
-        up_cap, down_cap = calculate_capture_ratios(returns, bench_r)
+        bench_r = (
+            benchmark_curve
+            .pct_change()
+            .reindex(dates)
+            .dropna()
+            .values
+        )
+
+        strat_r = (
+            returns
+            .reindex(dates)
+            .dropna()
+            .values
+        )
+
+        alpha, beta = calculate_alpha_beta(strat_r, bench_r)
+        te = calculate_tracking_error(strat_r, bench_r)
+        ir = calculate_information_ratio(strat_r, bench_r)
+        up_cap, down_cap = calculate_capture_ratios(strat_r, bench_r)
     else:
         alpha = beta = te = ir = up_cap = down_cap = np.nan
 
@@ -297,9 +311,9 @@ def compute_all_metrics(
         "skewness": skew,
         "kurtosis": kurt,
         "gain_to_pain": gpr,
-        "monthly_returns": monthly,
+        "monthly_returns": monthly_returns,
 
-        # Trades
+        # Trade metrics
         "win_rate": win_rate,
         "payoff_ratio": payoff,
         "expectancy": expectancy,
@@ -314,4 +328,3 @@ def compute_all_metrics(
         "up_capture_ratio": up_cap,
         "down_capture_ratio": down_cap,
     }
-

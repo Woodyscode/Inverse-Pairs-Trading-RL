@@ -80,6 +80,12 @@ walkforward:
   mode: "rolling"                # rolling | expanding
 
 
+elasticnet:
+  alpha: 0.01
+  l1_ratio: 0.5
+  max_iter: 20000
+  importance_threshold: 0.0
+
 # ======================================================================
 #                        KELLY POSITION SIZING
 # ======================================================================
@@ -94,20 +100,10 @@ kelly:
 # ======================================================================
 reward:
   # === CORE REWARD STRUCTURE (22 metrics) ===
-  lam_ret:      1.00
-  lam_vol:      0.20
-  lam_corr:     0.10
-  lam_rollvol:  0.08
-  lam_pos:      0.05
-  lam_mr:       0.25
-  lam_z:        0.08
-  lam_trend:    0.20
-  lam_kalman:   0.15
-  lam_ols:      0.15
-  lam_coint:    0.20
-  lam_liq:      0.05
-  lam_mom:      0.10
-  lam_stab:     0.12
+  lam_ret: 1.0
+  lam_mr:  0.1
+  lam_z:   0.01
+  reward_clip: 5.0
 
   # PPO stability
   reward_clip: 20
