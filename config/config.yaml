@@ -3,10 +3,9 @@
 # ======================================================================
 data:
   start_date: "2014-01-01"
-  end_date:   "2024-01-01"
+  end_date: "2024-01-01"
 
   assets_path: "config/pairs.yaml"
-
   price_type: "Adj Close"
   min_history: 500
   resample_frequency: "1D"
@@ -16,14 +15,24 @@ data:
 #                       PAIR SELECTION SETTINGS
 # ======================================================================
 pairs:
-  correlation_threshold: -0.8         # strong NEGATIVE correlation
-  cointegration_p_value: 0.05
-  min_observations: 400
-  max_pairs: 15                       # reduced for laptop compute
-  zscore_window: 30
+  correlation_threshold: 0.8
 
-  min_annual_vol: null
-  max_annual_vol: null
+  allow_positive: true
+  allow_negative: true
+
+  use_cointegration: true
+  cointegration_p_value: 0.05
+
+  min_observations: 300
+
+  traditional_min_annual_vol: 0.15
+  traditional_max_annual_vol: null
+
+  inverse_min_annual_vol: null
+  inverse_max_annual_vol: null
+
+  max_traditional_pairs: 30
+  max_inverse_pairs: null
 
 
 # ======================================================================
@@ -33,12 +42,11 @@ env:
   window_size: 30
   initial_capital: 100000
 
-  # Risk / Exposure
   max_position: 0.25
-  max_total_exposure: 5.0
+  max_total_exposure: 2.0
 
   transaction_cost: 0.0001
-  slippage_cost:     0.0001
+  slippage_cost: 0.0001
 
 
 # ======================================================================
@@ -49,9 +57,10 @@ rl:
 
   hyperparameters:
     policy: "MlpPolicy"
-    learning_rate: 0.0003
-    n_steps: 2048
-    batch_size: 64
+    learning_rate: 0.00015
+    n_steps: 4096
+    batch_size: 128
+    timesteps: 2000000
     n_epochs: 10
     gamma: 0.99
     gae_lambda: 0.95
@@ -77,14 +86,18 @@ walkforward:
   retrain_env_each_window: true
   retrain_kelly_each_window: false
 
-  mode: "rolling"                # rolling | expanding
+  mode: "rolling"
 
 
+# ======================================================================
+#                        ELASTIC NET SETTINGS
+# ======================================================================
 elasticnet:
   alpha: 0.01
   l1_ratio: 0.5
   max_iter: 20000
   importance_threshold: 0.0
+
 
 # ======================================================================
 #                        KELLY POSITION SIZING
@@ -96,24 +109,17 @@ kelly:
 
 
 # ======================================================================
-#                        REWARD FUNCTION WEIGHTS
+#                           REWARD SETTINGS
 # ======================================================================
 reward:
-  # === CORE REWARD STRUCTURE (22 metrics) ===
-  lam_ret: 1.0
-  lam_mr:  0.1
-  lam_z:   0.01
   reward_clip: 5.0
-
-  # PPO stability
-  reward_clip: 20
+  pos_penalty: 0.01
 
 
 # ======================================================================
-#                PPO TRAINING (SINGLE-WINDOW TRAIN MODE)
+#                PPO TRAINING SETTINGS
 # ======================================================================
 training:
-  timesteps: 300000           # reduced for laptop; can raise later
   log_interval: 500
   save_dir: "models/ppo/"
 
@@ -140,7 +146,6 @@ plotting:
   final_allocation: true
   return_distribution: true
   monthly_heatmap: true
-
   drawdown_curve: true
   ulcer_index_curve: true
   cdar_plot: true
@@ -165,5 +170,5 @@ logging:
 # ======================================================================
 system:
   seed: 42
-  device: "cpu"           # <--- IMPORTANT FOR YOUR LAPTOP
-  num_workers: 1          # laptop = 1 worker only
+  device: "cpu"
+  num_workers: 1

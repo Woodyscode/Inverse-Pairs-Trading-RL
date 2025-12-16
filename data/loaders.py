@@ -13,20 +13,20 @@ logger = get_logger("DataLoader")
 # ============================================================
 def clean_df(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Vectorized cleaning used by BOTH the DataLoader and walk-forward engine.
+    Shared cleaning for all loaders.
     Ensures:
-    - No NaN
-    - No +/- inf
-    - Fully forward/back filled
-    - Returns a REAL COPY (never a view)
+    - no NaN
+    - no Inf
+    - ffill + bfill
+    - returns deep copy (no view issues)
     """
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.ffill().bfill()
-    return df.copy()      # ← MOST IMPORTANT (prevents view slicing issues)
+    return df.copy()
 
 
 # ============================================================
-#  DATA LOADER CLASS
+#  DATA LOADER CLASS (REFINALIZED VERSION)
 # ============================================================
 class DataLoader:
 
@@ -35,32 +35,44 @@ class DataLoader:
     # --------------------------------------------------------
     @staticmethod
     def load_universe(path: str):
+        """
+        Loads all tickers from a YAML file.
+
+        Example YAML:
+        equities:
+          - AAPL-MSFT-GOOG
+          - [AMZN, META]
+        """
         with open(path, "r") as f:
             data = yaml.safe_load(f)
 
-        if data is None:
-            raise ValueError(f"[DataLoader] Universe YAML is empty: {path}")
+        if not data:
+            raise ValueError(f"[DataLoader] Universe YAML empty: {path}")
 
-        tickers = []
+        tickers = set()
 
         for category, groups in data.items():
             for group in groups:
 
+                # Case 1: explicit list
                 if isinstance(group, list):
-                    tickers.extend([x.strip() for x in group])
+                    tickers.update(x.strip() for x in group)
 
+                # Case 2: dash-separated string
                 elif isinstance(group, str):
-                    tickers.extend([x.strip() for x in group.split("-")])
+                    tickers.update(x.strip() for x in group.split("-"))
 
                 else:
-                    raise TypeError(f"Invalid universe entry type: {type(group)}")
+                    raise TypeError(f"[Universe] Invalid type: {type(group)}")
 
-        tickers = sorted(list(set(tickers)))
-        logger.info(f"[DataLoader] Loaded {len(tickers)} tickers.")
+        tickers = sorted(list(tickers))
+        logger.info(f"[DataLoader] Universe tickers loaded: {len(tickers)}")
+
         return tickers
 
+
     # --------------------------------------------------------
-    # LOAD FULL OHLCV FOR THE ENTIRE UNIVERSE
+    # LOAD OHLCV FOR ALL TICKERS (CENTRAL LOADER)
     # --------------------------------------------------------
     @staticmethod
     def load_prices(
@@ -69,8 +81,23 @@ class DataLoader:
         end: str,
         min_history: int = 500,
     ):
+        """
+        The ONLY function responsible for loading all OHLCV data.
+
+        Responsibilities:
+        - load universe
+        - download OHLCV for all tickers
+        - drop tickers with insufficient history
+        - align index across OHLCV panels
+        - return a cleaned dict of:
+            {"Open", "High", "Low", "Close", "Adj Close", "Volume"}
+        """
         tickers = DataLoader.load_universe(assets_path)
-        logger.info(f"[DataLoader] Downloading OHLCV for {len(tickers)} tickers...")
+
+        logger.info(
+            f"[DataLoader] Pulling OHLCV for {len(tickers)} tickers "
+            f"from {start} to {end}..."
+        )
 
         raw = yf.download(
             tickers,
@@ -82,50 +109,54 @@ class DataLoader:
         )
 
         if raw.empty:
-            raise RuntimeError("No OHLCV data downloaded.")
+            raise RuntimeError("[DataLoader] No OHLCV data returned by yfinance.")
 
-        # Extract frames
-        df_open  = clean_df(raw["Open"])
-        df_high  = clean_df(raw["High"])
-        df_low   = clean_df(raw["Low"])
-        df_close = clean_df(raw["Close"])
-        df_adj   = clean_df(raw["Adj Close"])
-        df_vol   = clean_df(raw["Volume"])
-
-        # -----------------------------
-        # FILTER OUT SHORT-HISTORY ASSETS
-        # -----------------------------
-        def filter_min(df):
-            return df.loc[:, df.count() >= min_history]
-
-        frames = {
-            "Open":      filter_min(df_open),
-            "High":      filter_min(df_high),
-            "Low":       filter_min(df_low),
-            "Close":     filter_min(df_close),
-            "Adj Close": filter_min(df_adj),
-            "Volume":    filter_min(df_vol),
+        # Each panel (Open, Close, etc.)
+        panels = {
+            "Open":      clean_df(raw["Open"]),
+            "High":      clean_df(raw["High"]),
+            "Low":       clean_df(raw["Low"]),
+            "Close":     clean_df(raw["Close"]),
+            "Adj Close": clean_df(raw["Adj Close"]),
+            "Volume":    clean_df(raw["Volume"]),
         }
 
-        # Keep only common tickers
-        common = set(frames["Open"].columns)
-        for key in frames:
-            common &= set(frames[key].columns)
+        # --------------------------------------------------
+        # FILTER by min_history
+        # --------------------------------------------------
+        def filter_min(df):
+            """Keep only columns where count() ≥ min_history."""
+            return df.loc[:, df.count() >= min_history]
+
+        filtered = {k: filter_min(df) for k, df in panels.items()}
+
+        # --------------------------------------------------
+        # KEEP ONLY TICKERS THAT EXIST IN ALL PANELS
+        # --------------------------------------------------
+        common = set(filtered["Open"].columns)
+        for key in filtered:
+            common &= set(filtered[key].columns)
 
         common = sorted(list(common))
 
-        for key in frames:
-            frames[key] = frames[key][common]
-            frames[key] = clean_df(frames[key])   # final panel-wide cleaning
+        if not common:
+            raise RuntimeError("[DataLoader] No commonly-available tickers after filtering.")
+
+        # Apply column filter
+        final = {
+            key: clean_df(df[common])
+            for key, df in filtered.items()
+        }
 
         logger.info(
-            f"[DataLoader] Final aligned OHLCV shape: {frames['Close'].shape}"
+            f"[DataLoader] Final OHLCV loaded: {final['Close'].shape}"
         )
 
-        return frames
+        return final
+
 
     # --------------------------------------------------------
-    # LOAD SINGLE TICKER (BENCHMARK)
+    # LOAD SINGLE SERIES (BENCHMARK, ETC.)
     # --------------------------------------------------------
     @staticmethod
     def load_single_price(
@@ -135,10 +166,8 @@ class DataLoader:
         price_type="Adj Close"
     ):
         """
-        Correct benchmark loader:
-        - downloads full historical series
-        - returns DataFrame with DatetimeIndex
-        - column is the ticker symbol
+        Loads a single ticker price series.
+        Always returns a DataFrame with 1 column: ticker
         """
 
         try:
@@ -150,14 +179,13 @@ class DataLoader:
                 progress=False,
             )
         except Exception as e:
-            logger.error(f"[DataLoader] Download failed for {ticker}: {e}")
+            logger.error(f"[DataLoader] download failed for {ticker}: {e}")
             return pd.DataFrame(index=pd.DatetimeIndex([]), columns=[ticker])
 
         if df.empty:
-            logger.error(f"[DataLoader] No data returned for {ticker}")
+            logger.error(f"[DataLoader] no data for {ticker}")
             return pd.DataFrame(index=pd.DatetimeIndex([]), columns=[ticker])
 
-        # Normalize column name
         if price_type not in df.columns:
             logger.error(
                 f"[DataLoader] '{price_type}' missing for {ticker}. "
@@ -165,18 +193,15 @@ class DataLoader:
             )
             return pd.DataFrame(index=pd.DatetimeIndex([]), columns=[ticker])
 
-        # Extract the series with index
-        s = df[price_type].dropna().copy()
+        series = df[price_type].dropna().copy()
 
-        if s.empty:
+        if series.empty:
             logger.error(f"[DataLoader] '{price_type}' empty for {ticker}")
             return pd.DataFrame(index=pd.DatetimeIndex([]), columns=[ticker])
 
-        s.index = pd.to_datetime(s.index)
+        series.index = pd.to_datetime(series.index)
 
-        # Build proper DataFrame — this is the FIX
-        out = pd.DataFrame(s)
+        out = pd.DataFrame(series)
         out.columns = [ticker]
 
         return clean_df(out)
-

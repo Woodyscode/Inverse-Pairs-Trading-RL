@@ -3,13 +3,13 @@ import gymnasium as gym
 from gymnasium import spaces
 
 from utils.logger import get_logger
-from utils.rewards import reward_style_simple
+from utils.rewards import reward_pnl
 
 logger = get_logger("InversePairsEnv")
 
 
 # ======================================================================
-#                      FINAL ENVIRONMENT (WITH EN INPUT)
+#                      FINAL MULTI-STRATEGY RL ENVIRONMENT
 # ======================================================================
 class InversePairsTradingEnv(gym.Env):
 
@@ -19,6 +19,7 @@ class InversePairsTradingEnv(gym.Env):
         self,
         ohlcv,
         pairs,
+        pair_types,          # NEW: {"A,B": "traditional" | "inverse"}
         config,
         price_index,
         features,
@@ -28,20 +29,24 @@ class InversePairsTradingEnv(gym.Env):
         super().__init__()
 
         # ----------------------------------------------------------
-        # Core Data Inputs
+        # Core Inputs
         # ----------------------------------------------------------
         self.ohlcv = ohlcv
         self.close = ohlcv["Close"]
+
         self.pairs = pairs
+        self.pair_types = pair_types
+
         self.price_index = price_index
         self.config = config
 
-        # Feature matrices per pair (already EN-reduced)
-        #   features[(A,B)] = np.array(T, K_reduced)
         self.features = features
-        self.metrics  = metrics
+        self.metrics = metrics
         self.feature_dims = feature_dims
 
+        # ----------------------------------------------------------
+        # Environment parameters
+        # ----------------------------------------------------------
         self.window = config["env"]["window_size"]
         self.initial_capital = config["env"]["initial_capital"]
 
@@ -51,28 +56,32 @@ class InversePairsTradingEnv(gym.Env):
         self.max_pos = config["env"]["max_position"]
         self.max_total_exposure = config["env"]["max_total_exposure"]
 
-        # Length of window
+        self.reward_cfg = config["reward"]
+
+        # Number of timesteps
         first_pair = pairs[0]
         self.T = len(features[first_pair])
 
         # ----------------------------------------------------------
-        # Observation / Action spaces
+        # Observation & Action Spaces
         # ----------------------------------------------------------
-        self.obs_dim = sum(self.feature_dims)   # dynamic per window
-        self.num_pairs = len(pairs)
+        # Add +1 context feature per pair for "pair_type"
+        self.obs_dim = sum(self.feature_dims) + len(self.pairs)
+        self.num_pairs = len(self.pairs)
 
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
             shape=(self.obs_dim,),
-            dtype=np.float32
+            dtype=np.float32,
         )
 
-        # For each pair: (direction, size)
+        # Action = [direction_i, size_i] for all pairs
         self.action_space = spaces.Box(
-            low=-1.0, high=1.0,
+            low=-1.0,
+            high=1.0,
             shape=(self.num_pairs * 2,),
-            dtype=np.float32
+            dtype=np.float32,
         )
 
         # ----------------------------------------------------------
@@ -80,24 +89,37 @@ class InversePairsTradingEnv(gym.Env):
         # ----------------------------------------------------------
         self.current_step = 0
         self.portfolio_value = self.initial_capital
+
+        # signed exposure weights per pair
         self.positions = {pair: 0.0 for pair in pairs}
 
-        # Tracking history
+        # logs
         self.pnl_history = []
         self.reward_history = []
         self.value_history = []
+        self.per_pair_pnls = {pair: [] for pair in pairs}
 
 
     # ==================================================================
     # OBSERVATION
     # ==================================================================
     def _get_obs(self):
-
+        """
+        Obs for each pair = [features..., pair_type_flag]
+        traditional -> +1
+        inverse     -> -1
+        """
         obs = []
 
-        for idx, pair in enumerate(self.pairs):
+        for pair in self.pairs:
             feats = self.features[pair][self.current_step]
             obs.append(feats)
+
+            # context flag: what strategy is this pair?
+            if self.pair_types[pair] == "traditional":
+                obs.append(np.array([1.0], dtype=np.float32))
+            else:
+                obs.append(np.array([-1.0], dtype=np.float32))
 
         return np.concatenate(obs, dtype=np.float32)
 
@@ -107,63 +129,71 @@ class InversePairsTradingEnv(gym.Env):
     # ==================================================================
     def step(self, action):
 
-        # Stop if no more timesteps
+        # Terminal condition
         if self.current_step >= self.T - 2:
-            info = {
+            return self._get_obs(), 0.0, True, False, {
                 "portfolio_value": self.portfolio_value,
                 "pnl": 0.0,
                 "reward": 0.0,
             }
-            return self._get_obs(), 0.0, True, False, info
 
         # --------------------------------------------------------------
-        # Action → positions
+        # Parse action → positions
         # --------------------------------------------------------------
         action = np.clip(action, -1, 1)
-        total_exposure = 0
+
+        total_exposure = 0.0
+        pair_notionals = {}
 
         for i, pair in enumerate(self.pairs):
-            direction = action[i * 2]     # -1, +1
-            size      = abs(action[i * 2 + 1]) * self.max_pos
 
-            pos = direction * size
+            direction = action[i * 2]         # -1 → +1
+            size = abs(action[i * 2 + 1])     # 0 → 1
+            pos = direction * size * self.max_pos
+
             self.positions[pair] = pos
+
+            notional = abs(pos) * self.portfolio_value
+            pair_notionals[pair] = notional
             total_exposure += abs(pos)
 
-        # Exposure cap
+        # Exposure clamp
         if total_exposure > self.max_total_exposure:
             scale = self.max_total_exposure / total_exposure
-            for pair in self.pairs:
-                self.positions[pair] *= scale
+            for p in self.pairs:
+                self.positions[p] *= scale
+                pair_notionals[p] *= scale
 
         # --------------------------------------------------------------
-        # LEG-BY-LEG PNL
+        # PnL Calculation (universal)
         # --------------------------------------------------------------
         total_pnl = 0.0
 
         for (A, B) in self.pairs:
 
             pos = self.positions[(A, B)]
+            notional = pair_notionals[(A, B)]
 
-            A_prev = self.close[A][self.current_step - 1]
-            B_prev = self.close[B][self.current_step - 1]
-            A_now  = self.close[A][self.current_step]
-            B_now  = self.close[B][self.current_step]
+            A_prev = self.close[A].iloc[self.current_step - 1]
+            B_prev = self.close[B].iloc[self.current_step - 1]
+            A_now  = self.close[A].iloc[self.current_step]
+            B_now  = self.close[B].iloc[self.current_step]
 
             ret_A = (A_now - A_prev) / A_prev
             ret_B = (B_now - B_prev) / B_prev
 
-            notional = self.portfolio_value * 0.5 * abs(pos)
-
-            pnl = notional * (pos * (ret_A - ret_B))
+            # spread-based return
+            spread_ret = ret_A - ret_B
+            pnl = pos * notional * spread_ret
             total_pnl += pnl
 
+            self.per_pair_pnls[(A, B)].append(pnl)
+
         # --------------------------------------------------------------
-        # TRANSACTION + SLIPPAGE COSTS
+        # Transaction + slippage costs
         # --------------------------------------------------------------
         tc = self.transaction_cost * abs(total_pnl)
         sc = self.slippage_cost * abs(total_pnl)
-
         total_pnl -= (tc + sc)
 
         # --------------------------------------------------------------
@@ -172,17 +202,22 @@ class InversePairsTradingEnv(gym.Env):
         prev_value = self.portfolio_value
         self.portfolio_value += total_pnl
 
-        reward = reward_style_simple(
+        # --------------------------------------------------------------
+        # PURE PNL REWARD
+        # --------------------------------------------------------------
+        reward = reward_pnl(
             portfolio_value=self.portfolio_value,
-            prev_portfolio_value=prev_value
+            prev_portfolio_value=prev_value,
+            position_size=total_exposure,
+            reward_clip=self.reward_cfg["reward_clip"],
         )
 
-        # Logging histories
+        # Logging
         self.pnl_history.append(total_pnl)
         self.reward_history.append(reward)
         self.value_history.append(self.portfolio_value)
 
-        # Move forward
+        # Next timestep
         self.current_step += 1
         obs = self._get_obs()
 
@@ -202,11 +237,12 @@ class InversePairsTradingEnv(gym.Env):
 
         super().reset(seed=seed)
 
-        self.current_step = self.window
+        self.current_step = max(1, self.window)
         self.portfolio_value = self.initial_capital
 
         for p in self.pairs:
             self.positions[p] = 0.0
+            self.per_pair_pnls[p].clear()
 
         self.pnl_history.clear()
         self.reward_history.clear()
@@ -216,14 +252,13 @@ class InversePairsTradingEnv(gym.Env):
 
 
     # ==================================================================
-    # FINAL ALLOCATION (for Backtester pie chart)
+    # FINAL PORTFOLIO ALLOCATION
     # ==================================================================
     def finalize_positions(self):
 
         alloc = {}
 
         for (A, B), pos in self.positions.items():
-
             alloc[A] = alloc.get(A, 0) + pos / 2
             alloc[B] = alloc.get(B, 0) - pos / 2
 
@@ -236,6 +271,8 @@ class InversePairsTradingEnv(gym.Env):
         return alloc
 
 
+    # ==================================================================
+    # RENDER
     # ==================================================================
     def render(self):
         step = self.current_step

@@ -1,61 +1,70 @@
-from typing import Dict, Any
 import os
 import numpy as np
+from typing import Dict, Any
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.callbacks import (
+    BaseCallback,
+    EvalCallback,
+    CheckpointCallback,
+)
+from stable_baselines3.common.monitor import Monitor
 
 from agents.agent_base import AgentBase
 from utils.logger import get_logger
 
+
 logger = get_logger("PPOAgent")
 
 
+# ======================================================================
+#                   CUSTOM CALLBACK: LOG REWARD & VALUE
+# ======================================================================
+class RewardLoggingCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+
+    def _on_step(self):
+        if "episode" in self.locals.get("infos", [{}])[0]:
+            ep_info = self.locals["infos"][0]["episode"]
+            logger.info(
+                f"[PPO] Episode: r={ep_info['r']:.4f}, l={ep_info['l']}"
+            )
+        return True
+
+
+# ======================================================================
+#                         PPO AGENT (FINAL)
+# ======================================================================
 class PPOAgent(AgentBase):
-    """
-    Production-grade PPO wrapper.
 
-    ✓ Gymnasium + SB3 compatible
-    ✓ Vectorized training env ONLY
-    ✓ Raw env used for inference/backtesting
-    ✓ Safe unwrapping of SB3 predict()
-    ✓ Device auto-selection (cpu / cuda)
-    ✓ Config-driven hyperparameters
-    ✓ Cleaner evaluation loop (Gymnasium API)
-    """
-
-    # ===============================================================
-    # INIT
-    # ===============================================================
     def __init__(self, config: Dict[str, Any], env, eval_env=None):
         super().__init__(config)
 
         hp = config["rl"]["hyperparameters"]
-        device_cfg = config["system"].get("device", "cuda")
+        device_cfg = config["system"].get("device", "cpu")
 
-        # -----------------------------------------------------------
-        # Device safety
-        # -----------------------------------------------------------
         if device_cfg not in ["cpu", "cuda"]:
             logger.warning(f"[PPOAgent] Invalid device '{device_cfg}', using CPU")
             device_cfg = "cpu"
 
-        logger.info("[PPOAgent] Initializing PPO agent...")
+        logger.info("[PPOAgent] Initializing PPO Agent...")
 
-        # -----------------------------------------------------------
-        # SB3 requires vectorized env **for training only**
-        # -----------------------------------------------------------
-        self.train_env = DummyVecEnv([lambda: env])
+        # ==================================================================
+        # SB3 requires vectorized env for training
+        # ==================================================================
+        self.train_env = DummyVecEnv([lambda: Monitor(env)])
         self.raw_env = env
 
         if eval_env is not None:
-            self.eval_env = DummyVecEnv([lambda: eval_env])
+            self.eval_env = DummyVecEnv([lambda: Monitor(eval_env)])
         else:
             self.eval_env = None
 
-        # -----------------------------------------------------------
-        # Create PPO model
-        # -----------------------------------------------------------
+        # ==================================================================
+        # PPO Model (with fully config-driven hyperparams)
+        # ==================================================================
         self.model = PPO(
             policy=hp.get("policy", "MlpPolicy"),
             env=self.train_env,
@@ -66,27 +75,55 @@ class PPOAgent(AgentBase):
             gamma=hp.get("gamma", 0.99),
             gae_lambda=hp.get("gae_lambda", 0.95),
             clip_range=hp.get("clip_range", 0.2),
-            ent_coef=hp.get("ent_coef", 0.0),
-            vf_coef=hp.get("vf_coef", 0.5),
+            ent_coef=hp.get("ent_coef", 0.00),
+            vf_coef=hp.get("vf_coef", 0.50),
             max_grad_norm=hp.get("max_grad_norm", 0.5),
             device=device_cfg,
             verbose=1,
+            tensorboard_log="logs/tensorboard/",
         )
 
-    # ===============================================================
-    # TRAINING
-    # ===============================================================
+
+    # ======================================================================
+    #                              TRAINING
+    # ======================================================================
     def train(self, timesteps: int, log_interval=10, save_dir="models/ppo"):
         """
-        Train SB3 PPO with progress bar + vectorized env.
+        Train PPO with vectorized env + callbacks.
         """
-        os.makedirs(save_dir, exist_ok=True)
-        logger.info(f"[PPOAgent] Training for {timesteps:,} timesteps...")
 
-        # SB3 learn loop
+        logger.info(f"[PPOAgent] Training for {timesteps:,} timesteps...")
+        os.makedirs(save_dir, exist_ok=True)
+
+        # --------------------------------------------------------------
+        # Callbacks for monitoring, saving, and evaluation
+        # --------------------------------------------------------------
+        checkpoint_cb = CheckpointCallback(
+            save_freq=10_000,
+            save_path=os.path.join(save_dir, "checkpoints"),
+            name_prefix="ppo_checkpoint",
+        )
+
+        callbacks = [checkpoint_cb, RewardLoggingCallback()]
+
+        if self.eval_env is not None:
+            eval_cb = EvalCallback(
+                self.eval_env,
+                best_model_save_path=os.path.join(save_dir, "best_model"),
+                log_path=os.path.join(save_dir, "eval_logs"),
+                eval_freq=20_000,
+                deterministic=True,
+                render=False,
+            )
+            callbacks.append(eval_cb)
+
+        # --------------------------------------------------------------
+        # SB3 Learn
+        # --------------------------------------------------------------
         self.model.learn(
             total_timesteps=timesteps,
             log_interval=log_interval,
+            callback=callbacks,
             progress_bar=True,
         )
 
@@ -94,25 +131,20 @@ class PPOAgent(AgentBase):
         self.save(os.path.join(save_dir, "final_model"))
         logger.info("[PPOAgent] Training complete.")
 
-    # ===============================================================
-    # PREDICT (raw, non-vec env)
-    # ===============================================================
-    def predict(self, obs):
-        """
-        Returns:
-            np.ndarray shape (action_dim,)
-        """
-        action, _ = self.model.predict(obs, deterministic=True)
 
-        # SB3 sometimes returns shape (1, action_dim)
+    # ======================================================================
+    #                             ACTION SELECTION
+    # ======================================================================
+    def predict(self, obs):
+        action, _ = self.model.predict(obs, deterministic=True)
         if isinstance(action, np.ndarray) and action.ndim == 2:
             return action[0]
+        return action
 
-        return np.array(action, dtype=np.float32)
 
-    # ===============================================================
-    # SAVE & LOAD
-    # ===============================================================
+    # ======================================================================
+    #                               SAVE / LOAD
+    # ======================================================================
     def save(self, path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         self.model.save(path)
@@ -122,26 +154,20 @@ class PPOAgent(AgentBase):
         self.model = PPO.load(path, env=self.train_env)
         logger.info(f"[PPOAgent] Loaded model ← {path}")
 
-    # ===============================================================
-    # EVALUATE (Gymnasium API compliant)
-    # ===============================================================
+
+    # ======================================================================
+    #                               EVALUATE
+    # ======================================================================
     def evaluate(self, env, steps=None):
-        """
-        Evaluates on **raw environment**, not vectorized.
 
-        Returns dict:
-            - final_value
-            - rewards
-            - portfolio_values
-        """
-
-        logger.info("[PPOAgent] Evaluating model...")
+        logger.info("[PPOAgent] Evaluating model (raw environment)...")
 
         obs, _ = env.reset()
         terminated = False
         truncated = False
 
-        rewards, portfolio_vals = [], []
+        rewards = []
+        values = []
 
         while not (terminated or truncated):
 
@@ -149,13 +175,13 @@ class PPOAgent(AgentBase):
             obs, reward, terminated, truncated, info = env.step(action)
 
             rewards.append(reward)
-            portfolio_vals.append(info["portfolio_value"])
+            values.append(info["portfolio_value"])
 
             if steps is not None and len(rewards) >= steps:
                 break
 
         return {
-            "final_value": portfolio_vals[-1],
-            "portfolio_values": portfolio_vals,
+            "final_value": values[-1],
             "rewards": rewards,
+            "portfolio_values": values,
         }

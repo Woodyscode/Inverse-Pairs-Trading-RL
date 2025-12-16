@@ -5,12 +5,8 @@ from utils.logger import get_logger
 from agents.ppo_agent import PPOAgent
 from backtest.backtester import Backtester
 
-try:
-    from statsmodels.tsa.stattools import coint
-except:
-    coint = None
-
 from data.loaders import clean_df
+from utils.pairs_selection import find_strong_pairs
 
 from env.features.advanced import (
     compute_all_advanced_features,
@@ -23,7 +19,7 @@ logger = get_logger("WalkForward")
 
 
 # =====================================================================
-#                  WALK-FORWARD ENGINE WITH LOGGING
+#                  WALK-FORWARD ENGINE (FINAL VERSION)
 # =====================================================================
 class WalkForwardEngine:
 
@@ -108,7 +104,10 @@ class WalkForwardEngine:
             train_end   = start
             test_end    = start + test_days
 
-            logger.info(f"\n[WF] Window candidate: train={train_start}-{train_end}, test={train_end}-{test_end}")
+            logger.info(
+                f"\n[WF] Window candidate: "
+                f"train={train_start}-{train_end}, test={train_end}-{test_end}"
+            )
 
             tr = clean_df(self.returns.iloc[train_start:train_end])
             te = clean_df(self.returns.iloc[train_end:test_end])
@@ -121,76 +120,6 @@ class WalkForwardEngine:
             ohl_test  = self._slice_ohlcv(train_end, test_end)
 
             yield ohl_train, ohl_test, tr, te, idx[train_start], idx[test_end - 1]
-
-
-    # =================================================================
-    def _select_pairs(self, ohl_train, train_ret):
-
-        trs = train_ret.dropna(axis=1, how="all")
-        if trs.shape[1] < 2:
-            logger.warning("[WF] Only 1 ticker available; skipping")
-            return []
-
-        logger.info(f"[WF] Selecting pairs from {trs.shape[1]} tickers")
-        logger.info(f"[WF] Tickers: {list(trs.columns)}")
-
-        trs = trs.sort_index(axis=1)
-        close = ohl_train["Close"].sort_index(axis=1)
-
-        cfg = self.pairs_cfg
-        corr_th   = cfg["correlation_threshold"]
-        max_pairs = cfg["max_pairs"]
-        min_obs   = cfg["min_observations"]
-        p_th      = cfg["cointegration_p_value"]
-
-        corr = trs.corr()
-        tickers = trs.columns.tolist()
-        candidates = []
-
-        for i, A in enumerate(tickers):
-            for B in tickers[i+1:]:
-
-                logger.debug(f"[WF] Testing pair ({A},{B})")
-
-                ra, rb = trs[A], trs[B]
-                common = ra.index.intersection(rb.index)
-
-                if len(common) < min_obs:
-                    logger.debug(f"[WF] Reject {A}-{B}: insufficient obs ({len(common)} < {min_obs})")
-                    continue
-
-                if ra.std() < 1e-12 or rb.std() < 1e-12:
-                    logger.debug(f"[WF] Reject {A}-{B}: near-zero std")
-                    continue
-
-                rho = corr.loc[A, B]
-                if np.isnan(rho) or rho > corr_th:
-                    logger.debug(f"[WF] Reject {A}-{B}: corr={rho:.4f} > {corr_th}")
-                    continue
-
-                if p_th and coint is not None:
-                    try:
-                        pa = close[A].loc[common]
-                        pb = close[B].loc[common]
-                        _, pval, _ = coint(pa, pb)
-                        if pval > p_th:
-                            logger.debug(f"[WF] Reject {A}-{B}: coint p={pval:.4f} > {p_th}")
-                            continue
-                    except Exception as e:
-                        logger.debug(f"[WF] Coint failed for {A}-{B}: {e}")
-
-                candidates.append(((A, B), rho))
-
-        if not candidates:
-            logger.warning("[WF] No valid pairs found")
-            return []
-
-        candidates.sort(key=lambda x: x[1])
-        selected = [p for p, _ in candidates[:max_pairs]]
-
-        logger.info(f"[WF] Selected pairs: {selected}")
-
-        return selected
 
 
     # =================================================================
@@ -231,7 +160,6 @@ class WalkForwardEngine:
 
         logger.info("[WF] Running ElasticNet feature reduction...")
 
-        # Create selector once per window
         selector = FeatureSelector(
             alpha=self.config["elasticnet"]["alpha"],
             l1_ratio=self.config["elasticnet"]["l1_ratio"],
@@ -245,11 +173,9 @@ class WalkForwardEngine:
         test_features  = {}
         feature_dims   = []
 
-        # Build all y targets at once
         logger.info("[WF] Building targets...")
         targets_dict = build_targets(ohlcv=ohl_train, pairs=pairs)
 
-        # Process each pair individually
         for (A, B) in pairs:
 
             X_train = raw_train[(A, B)]
@@ -259,33 +185,31 @@ class WalkForwardEngine:
             T_train = X_train.shape[0]
             y_train = y_full[:T_train]
 
-            logger.info(f"[WF] Pair {A}-{B}: raw dims train={X_train.shape}, test={X_test.shape}")
-
-            # Fit selector for this pair
-            selector.fit_pair(
-                pair=(A, B),
-                X=X_train,
-                y=y_train
+            logger.info(
+                f"[WF] Pair {A}-{B}: raw dims train={X_train.shape}, "
+                f"test={X_test.shape}"
             )
 
-            # Transform both
+            selector.fit_pair((A, B), X_train, y_train)
+
             X_train_sel = selector.transform_pair((A, B), X_train)
             X_test_sel  = selector.transform_pair((A, B), X_test)
 
             train_features[(A, B)] = X_train_sel
             test_features[(A, B)]  = X_test_sel
+
             feature_dims.append(X_train_sel.shape[1])
 
             logger.info(
-                f"[WF] EN reduced {A}-{B}: {X_train.shape[1]} → {X_train_sel.shape[1]}"
+                f"[WF] EN reduced {A}-{B}: "
+                f"{X_train.shape[1]} → {X_train_sel.shape[1]}"
             )
 
         return train_features, test_features, feature_dims
 
 
-
-
-
+    # =================================================================
+    #                            RUN
     # =================================================================
     def run(self):
 
@@ -297,9 +221,6 @@ class WalkForwardEngine:
         window_summaries  = []
         window_idx = 0
 
-        # ----------------------------------------------------------
-        # Iterate through WF windows
-        # ----------------------------------------------------------
         for (
             ohl_train,
             ohl_test,
@@ -310,70 +231,110 @@ class WalkForwardEngine:
         ) in self._generate_windows():
 
             window_idx += 1
-            logger.info(f"\n===== WF Window {window_idx}: {start_date.date()} → {end_date.date()} =====")
+            logger.info(
+                f"\n===== WF Window {window_idx}: "
+                f"{start_date.date()} → {end_date.date()} ====="
+            )
 
-            logger.info(f"[WF] Train size={len(train_ret)}, Test size={len(test_ret)}")
+            logger.info(
+                f"[WF] Train size={len(train_ret)}, Test size={len(test_ret)}"
+            )
 
-            # 1. Pair selection
-            pairs = self._select_pairs(ohl_train, train_ret)
-            if not pairs:
-                logger.warning("[WF] No pairs found, skipping window")
+            # =============================================
+            # 1. PAIR SELECTION (traditional + inverse)
+            # =============================================
+            close_train = ohl_train["Close"].copy()
+            ret_train   = close_train.pct_change().dropna()
+
+            logger.info("[WF] Selecting pairs...")
+
+            # FIXED CALL — matches your selector
+            traditional_pairs, inverse_pairs = find_strong_pairs(
+                returns_df=ret_train,
+                prices_df=close_train,
+                config=self.config
+            )
+
+            pairs = traditional_pairs + inverse_pairs
+
+            logger.info(f"[WF] Traditional pairs: {traditional_pairs}")
+            logger.info(f"[WF] Inverse pairs:     {inverse_pairs}")
+            logger.info(f"[WF] TOTAL pairs used: {len(pairs)}")
+
+            if len(pairs) == 0:
+                logger.warning("[WF] No strong pairs found — skipping window")
                 continue
 
-            # 2. Filter OHLCV
-            ohl_train = self._filter_ohlcv_to_pairs(ohl_train, pairs)
-            ohl_test  = self._filter_ohlcv_to_pairs(ohl_test, pairs)
+            # =============================================
+            # 2. Build pair-type dictionary
+            # =============================================
+            pair_types = {}
+            for p in traditional_pairs:
+                pair_types[p] = "traditional"
+            for p in inverse_pairs:
+                pair_types[p] = "inverse"
 
-            # 3. Raw features
+            # =============================================
+            # 3. FILTER OHLCV TO SELECTED PAIRS
+            # =============================================
+            ohl_train = self._filter_ohlcv_to_pairs(ohl_train, pairs)
+            ohl_test  = self._filter_ohlcv_to_pairs(ohl_test,  pairs)
+
+            # =============================================
+            # 4. Feature computation
+            # =============================================
             raw_train, metrics_train = self._compute_features_for_window(ohl_train, pairs)
             raw_test,  metrics_test  = self._compute_features_for_window(ohl_test,  pairs)
 
-            # 4. ElasticNet
+            # =============================================
+            # 5. ElasticNet feature reduction
+            # =============================================
             f_train, f_test, dims = self._run_elastic_net(
                 raw_train, raw_test, pairs, ohl_train
             )
 
-            # 5. Train Env
-            logger.info("[WF] Building training environment...")
+            # =============================================
+            # 6. Train RL on training window
+            # =============================================
             env_train = self.env_builder(
                 ohlcv=ohl_train,
                 pairs=pairs,
+                pair_types=pair_types,
                 config=self.config,
                 price_index=ohl_train["Close"].index,
                 features=f_train,
                 metrics=metrics_train,
-                feature_dims=dims
+                feature_dims=dims,
             )
 
             agent = PPOAgent(self.config, env_train)
-            logger.info("[WF] Training PPO agent...")
-            agent.train(self.train_cfg["timesteps"])
+            agent.train(self.config["rl"]["hyperparameters"]["timesteps"])
 
-            # 6. Test Env
-            logger.info("[WF] Building test environment...")
+            # =============================================
+            # 7. Test environment + backtest
+            # =============================================
             env_test = self.env_builder(
                 ohlcv=ohl_test,
                 pairs=pairs,
+                pair_types=pair_types,
                 config=self.config,
                 price_index=ohl_test["Close"].index,
                 features=f_test,
                 metrics=metrics_test,
-                feature_dims=dims
+                feature_dims=dims,
             )
 
-            # 7. Backtest
-            logger.info("[WF] Running backtest...")
             bt = Backtester(agent=agent, env=env_test, config=self.config)
             results = bt.run()
 
             eq_curve = results["equity_curve"]
-            metrics  = results["metrics"]
 
             if "trade_pnls" in results:
                 global_trade_pnls.extend(results["trade_pnls"])
 
-            # 8. Stitching
-            logger.info("[WF] Stitching equity curve...")
+            # =============================================
+            # 8. Equity stitching
+            # =============================================
             rets = eq_curve.pct_change().fillna(0)
             scaled = running_capital * (1 + rets).cumprod()
 
@@ -392,14 +353,14 @@ class WalkForwardEngine:
                 "window": window_idx,
                 "start": start_date,
                 "end": end_date,
-                "metrics": metrics,
+                "metrics": results["metrics"],
             })
 
-        # ----------------------------------------------------------
+        # ======================================================
         # FINAL METRICS
-        # ----------------------------------------------------------
+        # ======================================================
         if stitched_equity is None:
-            raise RuntimeError("[WF] No windows executed")
+            raise RuntimeError("[WF] No WF windows executed")
 
         logger.info("\n======== WALK-FORWARD COMPLETE ========")
         logger.info(f"[WF] Final stitched value: {stitched_equity.iloc[-1]:,.2f}")

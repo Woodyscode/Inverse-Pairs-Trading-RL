@@ -20,20 +20,32 @@ logger = get_logger("MainTrain")
 
 
 # ======================================================================
-#                    ENV FACTORY (FULL SIGNATURE)
+#                    ENV FACTORY (UPDATED FINAL VERSION)
 # ======================================================================
-def build_env(config, ohlcv_slice, pairs, price_index, features, metrics, feature_dims):
+def build_env(
+    *,
+    ohlcv,
+    pairs,
+    pair_types,     # <--- NEW
+    config,
+    price_index,
+    features,
+    metrics,
+    feature_dims
+):
     """
-    Unified factory for WF environment construction.
-    WalkForwardEngine guarantees the correct inputs.
+    Unified factory for WalkForwardEngine (FULL SIGNATURE).
+    Now includes pair_types to support classical + inverse logic.
     """
+
     logger.info(
         f"[MainTrain] Building environment: {len(pairs)} pairs, dims={sum(feature_dims)}"
     )
 
     return InversePairsTradingEnv(
-        ohlcv=ohlcv_slice,
+        ohlcv=ohlcv,
         pairs=pairs,
+        pair_types=pair_types,    # <--- NEW
         config=config,
         price_index=price_index,
         features=features,
@@ -42,13 +54,11 @@ def build_env(config, ohlcv_slice, pairs, price_index, features, metrics, featur
     )
 
 
+
 # ======================================================================
 #                    SPY BENCHMARK LOADING HELPER
 # ======================================================================
 def load_benchmark(price_index):
-    """
-    Loads SPY aligned to the master price index.
-    """
     logger.info("[MainTrain] Loading SPY benchmark...")
 
     start = price_index[0].strftime("%Y-%m-%d")
@@ -72,14 +82,16 @@ def load_benchmark(price_index):
     return curve
 
 
+
 # ======================================================================
-#                    RAM / CPU Diagnostics
+#                    SYSTEM DIAGNOSTICS
 # ======================================================================
 def log_system_usage():
     process = psutil.Process(os.getpid())
     mem = process.memory_info().rss / (1024 ** 2)
     logger.info(f"[System] Process Memory Usage: {mem:.2f} MB")
     logger.info(f"[System] CPU Count: {psutil.cpu_count(logical=True)}")
+
 
 
 # ======================================================================
@@ -129,7 +141,7 @@ def main(config_path="config/config.yaml"):
     config["benchmark_curve"] = spy_curve
 
     # ----------------------------------------------------------
-    # 4. Walk Forward Optimization (EN + Feature Computation)
+    # 4. Walk Forward Optimization
     # ----------------------------------------------------------
     if config["walkforward"]["enabled"]:
         logger.info("[MainTrain] Walk-Forward Optimization ENABLED.")
@@ -154,6 +166,7 @@ def main(config_path="config/config.yaml"):
     else:
         logger.error("[MainTrain] ERROR: Walk-forward disabled. The current architecture REQUIRES WF.")
         raise RuntimeError("Walk-forward must be enabled for EN + feature pipeline.")
+
 
 
 # ======================================================================

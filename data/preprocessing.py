@@ -10,75 +10,58 @@ logger = get_logger("Preprocessing")
 
 
 # ======================================================================
-#                    FINAL PREPROCESSING PIPELINE
+#                    STANDARDIZED PREPROCESSING PIPELINE
 # ======================================================================
 def prepare_data(config):
     """
-    Prepares raw OHLCV data, log returns, wavelet-denoised returns,
-    and aligned price index.
+    FINAL VERSION:
+    - Loads OHLCV using DataLoader (NO preprocessing performed there)
+    - Computes log returns
+    - Normalizes returns
+    - Wavelet-denoises returns
+    - Aligns OHLCV + cleaned returns
+    - Returns:
+        ohlcv: dict of DataFrames
+        cleaned_returns: fully denoised returns
+        idx: aligned DatetimeIndex
 
-    IMPORTANT:
-    - This function NO LONGER handles pairs.
-    - Pair selection is done in WalkForwardEngine.
-    - Per-pair advanced features are computed INSIDE the environment.
+    No pair selection.
+    No feature computation.
     """
 
     logger.info("\n[DATA] ========= PREPARING FULL DATA PIPELINE =========")
 
-    # -------------------------------
-    # Read config values
-    # -------------------------------
-    assets_path = config["data"]["assets_path"]
-    start       = config["data"]["start_date"]
-    end         = config["data"]["end_date"]
-    min_hist    = config["data"]["min_history"]
-
-
     # ----------------------------------------------------------
-    # 1. Load universe tickers
-    # ----------------------------------------------------------
-    universe = DataLoader.load_universe(assets_path)
-    logger.info(f"[DATA] Universe contains {len(universe)} tickers.")
-
-
-    # ----------------------------------------------------------
-    # 2. Load OHLCV data for ALL assets
+    # 1) Load ALL raw OHLCV via DataLoader (clean & aligned already)
     # ----------------------------------------------------------
     ohlcv = DataLoader.load_prices(
-        assets_path=assets_path,
-        start=start,
-        end=end,
-        min_history=min_hist,
+        assets_path=config["data"]["assets_path"],
+        start=config["data"]["start_date"],
+        end=config["data"]["end_date"],
+        min_history=config["data"]["min_history"],
     )
 
-    # ----------------------------------------------------------
-    # 3. Filter OHLCV to tickers actually present
-    # ----------------------------------------------------------
-    for key, df in ohlcv.items():
-        ohlcv[key] = df[[t for t in universe if t in df.columns]]
-
-    if ohlcv["Close"].empty:
-        raise RuntimeError("[DATA] OHLCV is empty after filtering universe.")
-
-    logger.info("[DATA] Shapes after universe filtering:")
-    for k, df in ohlcv.items():
-        logger.info(f"   {k:10s}: {df.shape}")
-
-
-    # ----------------------------------------------------------
-    # 4. Compute log returns → normalize → wavelet denoise
-    # ----------------------------------------------------------
     close = ohlcv["Close"]
 
-    log_ret  = compute_log_returns(close)
-    norm_ret = normalize_returns(log_ret)
-
-    # wavelet smoothing for noise reduction
-    cleaned_returns = denoise_dataframe(norm_ret)
-
+    logger.info("[DATA] OHLCV loaded. Computing returns...")
 
     # ----------------------------------------------------------
-    # 5. Align OHLCV with cleaned returns
+    # 2) Compute log returns
+    # ----------------------------------------------------------
+    log_ret = compute_log_returns(close)
+
+    # ----------------------------------------------------------
+    # 3) Normalize returns
+    # ----------------------------------------------------------
+    norm_ret = normalize_returns(log_ret)
+
+    # ----------------------------------------------------------
+    # 4) Wavelet denoise
+    # ----------------------------------------------------------
+    cleaned_returns = denoise_dataframe(norm_ret)
+
+    # ----------------------------------------------------------
+    # 5) Align OHLCV with cleaned returns
     # ----------------------------------------------------------
     idx = close.index.intersection(cleaned_returns.index).sort_values()
 
@@ -88,17 +71,10 @@ def prepare_data(config):
     cleaned_returns = cleaned_returns.loc[idx]
 
     logger.info(
-        f"[DATA] Aligned shapes: OHLCV={ohlcv['Close'].shape}, RETURNS={cleaned_returns.shape}"
+        f"[DATA] Final aligned shapes: OHLCV={ohlcv['Close'].shape}, "
+        f"RETURNS={cleaned_returns.shape}"
     )
     logger.info(f"[DATA] Total timesteps: {len(idx)}")
-
-
-    # ----------------------------------------------------------
-    # 6. RETURN CORE DATA ONLY
-    # ----------------------------------------------------------
-    # No pairs, no feature vectors computed here.
-    # The environment will compute pairs inside windows.
-    # ----------------------------------------------------------
     logger.info("[DATA] ========= PREPROCESSING COMPLETE =========\n")
 
     return ohlcv, cleaned_returns, idx
