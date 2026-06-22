@@ -188,13 +188,24 @@ def vol_signature(p):
 # MAIN FEATURE PIPELINE (FINAL TUNED)
 # ============================================================
 
-def compute_all_advanced_features(ohlcv, A, B, step, kalman_state, base_window=30):
+def compute_all_advanced_features(
+    ohlcv,
+    A,
+    B,
+    step,
+    kalman_state,
+    base_window=30,
+    min_periods=60,
+    price_type="Adj Close",
+):
     """
     Returns: features (len=146), new Kalman state, metrics dict
     """
 
-    # Early warm-up
-    if step < 252:
+    # Early warm-up. This is deliberately configurable so short validation
+    # and test windows can use trailing train context instead of producing
+    # all-zero features.
+    if step < min_periods:
         return [0]*N_ADVANCED_PAIR_FEATURES, kalman_state, {
             "spread":0,"spread_prev":0,"zscore":0,"zscore_slope":0,
             "spread_velocity":0,"spread_acceleration":0,"spread_jerk":0,
@@ -214,7 +225,7 @@ def compute_all_advanced_features(ohlcv, A, B, step, kalman_state, base_window=3
     highA, highB   = cut("High")
     lowA, lowB     = cut("Low")
     closeA, closeB = cut("Close")
-    adjA, adjB     = cut("Adj Close")
+    adjA, adjB     = cut(price_type)
     volA, volB     = cut("Volume")
 
     # Spread + velocity terms
@@ -418,6 +429,8 @@ def compute_all_advanced_features(ohlcv, A, B, step, kalman_state, base_window=3
         feats += [0]*(N_ADVANCED_PAIR_FEATURES - len(feats))
     else:
         feats = feats[:N_ADVANCED_PAIR_FEATURES]
+
+    feats = np.nan_to_num(np.asarray(feats, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 
 
     # ============================================================

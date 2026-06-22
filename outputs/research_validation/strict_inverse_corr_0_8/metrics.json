@@ -1,0 +1,33 @@
+{
+  "final_value": 100000.04841071746,
+  "total_return": 4.841071745698144e-07,
+  "cagr": 5.083137021744122e-06,
+  "volatility": 1.2549124537259807e-06,
+  "sharpe": 4.226640059833138,
+  "sortino": 11.274545708280211,
+  "max_drawdown": 3.1318344262035597e-07,
+  "drawdown_duration_days": 15,
+  "ulcer_index": 1.5643888838583556e-07,
+  "cdar": -3.0645338100662033e-07,
+  "mar": 16.230542008269417,
+  "calmar_36m": null,
+  "skewness": 1.5917109997358956,
+  "kurtosis": 2.995466228791786,
+  "gain_to_pain": 2.3635377728360174,
+  "monthly_returns": {
+    "2021-01-31 00:00:00": -0.0,
+    "2021-02-28 00:00:00": 0.0,
+    "2021-03-31 00:00:00": 0.0
+  },
+  "win_rate": 0.5454545454545454,
+  "payoff_ratio": 1.9696208074318504,
+  "expectancy": 0.6197931676901001,
+  "profit_factor": 2.363544968918221,
+  "max_consecutive_losses": 5,
+  "alpha": 5.3041303443326075e-06,
+  "beta": 0.0,
+  "tracking_error": 1.2549124537259807e-06,
+  "information_ratio": 4.226693526376305,
+  "up_capture_ratio": null,
+  "down_capture_ratio": null
+}

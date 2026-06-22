@@ -7,8 +7,17 @@ data:
 
   assets_path: "config/pairs.yaml"
   price_type: "Adj Close"
+  source: "yfinance"
   min_history: 500
+  max_ffill_gap: 5
   resample_frequency: "1D"
+  quality_report_path: "outputs/audit/data_quality_report.csv"
+
+  wavelet:
+    enabled: true
+    name: "db4"
+    level: 3
+    window: 64
 
 
 # ======================================================================
@@ -17,7 +26,7 @@ data:
 pairs:
   correlation_threshold: 0.8
 
-  allow_positive: true
+  allow_positive: false
   allow_negative: true
 
   use_cointegration: true
@@ -47,6 +56,23 @@ env:
 
   transaction_cost: 0.0001
   slippage_cost: 0.0001
+  cost_model: "turnover"
+  borrow_fee_annual: 0.005
+  financing_rate_annual: 0.02
+  cash_rate_annual: 0.00
+
+  liquidity:
+    enabled: false
+    adv_window: 20
+    max_trade_pct_adv: 0.01
+
+
+# ======================================================================
+#                         FEATURE SETTINGS
+# ======================================================================
+features:
+  min_periods: 60
+  base_window: 30
 
 
 # ======================================================================
@@ -77,6 +103,7 @@ walkforward:
   enabled: true
 
   train_years: 3
+  validation_months: 0
   test_months: 6
 
   min_train_size: 500
@@ -87,6 +114,10 @@ walkforward:
   retrain_kelly_each_window: false
 
   mode: "rolling"
+  feature_context_days: 252
+
+validation:
+  run_baselines: true
 
 
 # ======================================================================
@@ -172,3 +203,10 @@ system:
   seed: 42
   device: "cpu"
   num_workers: 1
+
+
+# ======================================================================
+#                            OUTPUTS
+# ======================================================================
+output:
+  run_dir: "outputs/runs/full"

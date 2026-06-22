@@ -1,0 +1,153 @@
+import numpy as np
+import pandas as pd
+
+from backtest.walkforward import WalkForwardEngine
+from data.loaders import DataLoader
+from data.returns import compute_log_returns
+from env.features.feature_selector import FeatureSelector
+from utils.pairs_selection import find_strong_pairs
+
+
+def _config():
+    return {
+        "data": {"price_type": "Adj Close"},
+        "pairs": {
+            "correlation_threshold": 0.6,
+            "allow_positive": False,
+            "allow_negative": True,
+            "use_cointegration": True,
+            "cointegration_p_value": 0.10,
+            "min_observations": 80,
+            "traditional_min_annual_vol": None,
+            "traditional_max_annual_vol": None,
+            "inverse_min_annual_vol": None,
+            "inverse_max_annual_vol": None,
+            "max_traditional_pairs": 0,
+            "max_inverse_pairs": None,
+        },
+        "env": {"window_size": 30, "initial_capital": 100000},
+        "walkforward": {
+            "train_years": 1,
+            "test_months": 3,
+            "min_train_size": 200,
+            "min_test_size": 40,
+            "mode": "rolling",
+            "feature_context_days": 252,
+        },
+        "training": {},
+        "features": {"min_periods": 60, "base_window": 30},
+    }
+
+
+def _synthetic_panels(periods=390):
+    return DataLoader._synthetic_ohlcv(
+        tickers=["SMOKE_A", "SMOKE_B", "SMOKE_C"],
+        start="2020-01-01",
+        periods=periods,
+        seed=42,
+    )
+
+
+def _aligned_returns(ohlcv):
+    returns = compute_log_returns(ohlcv["Adj Close"])
+    idx = returns.index
+    return {k: v.loc[idx].copy() for k, v in ohlcv.items()}, returns
+
+
+def test_train_validation_and_test_features_are_nonzero_with_context():
+    ohlcv, returns = _aligned_returns(_synthetic_panels(390))
+    engine = WalkForwardEngine(
+        ohlcv=ohlcv,
+        returns=returns,
+        config=_config(),
+        env_builder=lambda **kwargs: None,
+        price_index=returns.index,
+    )
+    pair = ("SMOKE_A", "SMOKE_B")
+    train = {k: v.iloc[:252].copy() for k, v in ohlcv.items()}
+    validation = {k: v.iloc[252:315].copy() for k, v in ohlcv.items()}
+    test = {k: v.iloc[315:378].copy() for k, v in ohlcv.items()}
+    context = {k: v.iloc[:252].copy() for k, v in ohlcv.items()}
+    val_context = {k: v.iloc[63:315].copy() for k, v in ohlcv.items()}
+
+    train_features, _ = engine._compute_features_for_window(train, [pair])
+    val_features, _ = engine._compute_features_for_window(validation, [pair], context_ohlcv=context)
+    test_features, _ = engine._compute_features_for_window(test, [pair], context_ohlcv=val_context)
+
+    assert np.any(train_features[pair] != 0.0)
+    assert np.any(val_features[pair] != 0.0)
+    assert np.any(test_features[pair] != 0.0)
+
+
+def _select_first_window_pairs(ohlcv):
+    ohlcv, returns = _aligned_returns(ohlcv)
+    engine = WalkForwardEngine(
+        ohlcv=ohlcv,
+        returns=returns,
+        config=_config(),
+        env_builder=lambda **kwargs: None,
+        price_index=returns.index,
+    )
+    ohl_train, _, _, _, _, _ = next(engine._generate_windows())
+    prices = ohl_train["Adj Close"]
+    rets = prices.pct_change().dropna()
+    return find_strong_pairs(rets, prices, _config())
+
+
+def test_pair_selection_uses_training_window_not_test_window():
+    base = _synthetic_panels(340)
+    selected_base = _select_first_window_pairs(base)
+
+    test_mutated = {k: v.copy() for k, v in base.items()}
+    for panel in test_mutated.values():
+        panel.iloc[260:] = panel.iloc[260:].iloc[::-1].values
+
+    selected_test_mutated = _select_first_window_pairs(test_mutated)
+    assert selected_test_mutated == selected_base
+
+    train_mutated = {k: v.copy() for k, v in base.items()}
+    for field in train_mutated:
+        train_mutated[field].loc[:, "SMOKE_B"] = train_mutated[field]["SMOKE_C"].values
+
+    selected_train_mutated = _select_first_window_pairs(train_mutated)
+    assert selected_train_mutated != selected_base
+
+
+def test_feature_scaler_is_fit_on_train_only():
+    rng = np.random.default_rng(123)
+    x_train = rng.normal(0, 1, size=(120, 4))
+    y_train = x_train[:, 0] * 0.5
+    x_test = rng.normal(100, 1, size=(20, 4))
+
+    selector = FeatureSelector(alpha=0.001, l1_ratio=0.5, max_iter=5000, auto_k=False)
+    selector.fit_pair(("A", "B"), x_train, y_train)
+    transformed = selector.transform_pair(("A", "B"), x_test)
+
+    selected = selector.selected_features[("A", "B")]
+    expected = selector.scalers[("A", "B")].transform(x_test)[:, selected]
+    np.testing.assert_allclose(transformed, expected)
+    assert not np.allclose(np.mean(transformed, axis=0), 0.0)
+
+
+def test_validation_windows_are_ordered_and_non_overlapping():
+    ohlcv, returns = _aligned_returns(_synthetic_panels(320))
+    cfg = _config()
+    cfg["walkforward"]["train_years"] = 0.75
+    cfg["walkforward"]["validation_months"] = 2
+    cfg["walkforward"]["test_months"] = 2
+    cfg["walkforward"]["min_train_size"] = 150
+    cfg["walkforward"]["min_validation_size"] = 30
+    cfg["walkforward"]["step_days"] = 42
+
+    engine = WalkForwardEngine(
+        ohlcv=ohlcv,
+        returns=returns,
+        config=cfg,
+        env_builder=lambda **kwargs: None,
+        price_index=returns.index,
+    )
+
+    ohl_train, ohl_val, ohl_test, *_ = next(engine._generate_validation_windows())
+
+    assert ohl_train["Close"].index.max() < ohl_val["Close"].index.min()
+    assert ohl_val["Close"].index.max() < ohl_test["Close"].index.min()

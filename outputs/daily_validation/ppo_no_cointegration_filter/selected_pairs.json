@@ -1,0 +1,46 @@
+[
+  {
+    "window": 1,
+    "train_start": "2014-01-03",
+    "validation_start": "2017-01-04",
+    "test_start": "2017-07-06",
+    "end": "2018-01-03",
+    "traditional_pairs": [],
+    "inverse_pairs": [
+      [
+        "A",
+        "TVIXF"
+      ],
+      [
+        "A",
+        "UVXY"
+      ],
+      [
+        "A",
+        "VIXM"
+      ]
+    ]
+  },
+  {
+    "window": 2,
+    "train_start": "2014-07-07",
+    "validation_start": "2017-07-06",
+    "test_start": "2018-01-04",
+    "end": "2018-07-05",
+    "traditional_pairs": [],
+    "inverse_pairs": [
+      [
+        "A",
+        "TVIXF"
+      ],
+      [
+        "A",
+        "UVXY"
+      ],
+      [
+        "A",
+        "VIXM"
+      ]
+    ]
+  }
+]

@@ -1,13 +1,13 @@
 import numpy as np
 
-def build_targets(ohlcv, pairs):
+def build_targets(ohlcv, pairs, price_type="Adj Close"):
     """
     Create supervised learning targets for each pair:
         y[t] = next-step spread return
     Works well with ElasticNet.
     """
 
-    close = ohlcv["Close"]
+    close = ohlcv[price_type]
     targets = {}
 
     for (A, B) in pairs:

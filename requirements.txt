@@ -2,6 +2,8 @@
 numpy
 pandas
 scipy
+scikit-learn
+psutil
 
 # Wavelet transforms
 PyWavelets
@@ -40,3 +42,4 @@ tabulate
 jupyter
 
 pykalman
+pytest

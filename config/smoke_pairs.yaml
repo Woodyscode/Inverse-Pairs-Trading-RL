@@ -1,0 +1,2 @@
+smoke:
+  - [SMOKE_A, SMOKE_B, SMOKE_C]

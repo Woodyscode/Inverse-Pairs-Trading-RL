@@ -1,0 +1,4 @@
+include_files:
+- outputs\test_tmp\universe_d265a179f1f94ac49c4624e555758d92\include.yaml
+local:
+- - C

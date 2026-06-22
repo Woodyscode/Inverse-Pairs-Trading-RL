@@ -4,6 +4,10 @@ import random
 import torch
 import psutil
 import os
+import json
+import argparse
+import pandas as pd
+import math
 
 from setup_paths import *
 
@@ -58,8 +62,73 @@ def build_env(
 # ======================================================================
 #                    SPY BENCHMARK LOADING HELPER
 # ======================================================================
-def load_benchmark(price_index):
+def _json_default(obj):
+    if hasattr(obj, "item"):
+        return obj.item()
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+    if isinstance(obj, tuple):
+        return list(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
+def _json_safe(obj):
+    if isinstance(obj, dict):
+        return {str(key): _json_safe(value) for key, value in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(value) for value in obj]
+    if isinstance(obj, float) and not math.isfinite(obj):
+        return None
+    if hasattr(obj, "item"):
+        value = obj.item()
+        if isinstance(value, float) and not math.isfinite(value):
+            return None
+        return value
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+    return obj
+
+
+def save_run_outputs(results, config):
+    run_dir = config.get("output", {}).get("run_dir")
+    if not run_dir:
+        return
+
+    os.makedirs(run_dir, exist_ok=True)
+
+    results["equity_curve"].to_csv(os.path.join(run_dir, "equity_curve.csv"), header=True)
+
+    with open(os.path.join(run_dir, "metrics.json"), "w") as f:
+        json.dump(_json_safe(results["metrics"]), f, indent=2, default=_json_default)
+
+    with open(os.path.join(run_dir, "window_metrics.json"), "w") as f:
+        json.dump(_json_safe(results.get("window_metrics", [])), f, indent=2, default=_json_default)
+
+    with open(os.path.join(run_dir, "selected_pairs.json"), "w") as f:
+        json.dump(_json_safe(results.get("selected_pairs", [])), f, indent=2, default=_json_default)
+
+    serializable_config = {
+        key: value for key, value in config.items()
+        if key not in {"price_index", "benchmark_curve"}
+    }
+    with open(os.path.join(run_dir, "config_used.yaml"), "w") as f:
+        yaml.safe_dump(serializable_config, f, sort_keys=False)
+
+
+def load_benchmark(price_index, config, ohlcv=None):
+    if not config.get("evaluation", {}).get("compare_to_spy", True):
+        curve = np.ones(len(price_index), dtype=float)
+        return pd.Series(curve, index=price_index, name="Benchmark")
+
     logger.info("[MainTrain] Loading SPY benchmark...")
+    price_type = config.get("data", {}).get("price_type", "Adj Close")
+
+    if ohlcv is not None and price_type in ohlcv and "SPY" in ohlcv[price_type].columns:
+        curve = ohlcv[price_type]["SPY"].reindex(price_index).ffill()
+        curve = curve / curve.iloc[0]
+        curve.name = "SPY"
+        logger.info("[MainTrain] SPY benchmark loaded from prepared dataset.")
+        return curve
 
     start = price_index[0].strftime("%Y-%m-%d")
     end   = price_index[-1].strftime("%Y-%m-%d")
@@ -68,7 +137,7 @@ def load_benchmark(price_index):
         ticker="SPY",
         start=start,
         end=end,
-        price_type="Adj Close",
+        price_type=price_type,
     )
 
     if "SPY" not in spy.columns:
@@ -97,15 +166,11 @@ def log_system_usage():
 # ======================================================================
 #                               MAIN
 # ======================================================================
-def main(config_path="config/config.yaml"):
+def main(config_path="config/config.yaml", smoke=False):
 
     # ----------------------------------------------------------
     # Global reproducibility
     # ----------------------------------------------------------
-    torch.manual_seed(42)
-    np.random.seed(42)
-    random.seed(42)
-
     logger.info("====================================================")
     logger.info("================= MAIN TRAIN START =================")
     logger.info("====================================================")
@@ -118,6 +183,14 @@ def main(config_path="config/config.yaml"):
     logger.info("[MainTrain] Loading configuration file...")
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
+
+    if smoke:
+        config["smoke"] = True
+
+    seed = config.get("system", {}).get("seed", 42)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     # ----------------------------------------------------------
     # 2. Data Preparation
@@ -137,7 +210,7 @@ def main(config_path="config/config.yaml"):
     # 3. Benchmark
     # ----------------------------------------------------------
     logger.info("[MainTrain] Preparing benchmark curve...")
-    spy_curve = load_benchmark(price_index)
+    spy_curve = load_benchmark(price_index, config, ohlcv=ohlcv)
     config["benchmark_curve"] = spy_curve
 
     # ----------------------------------------------------------
@@ -160,6 +233,7 @@ def main(config_path="config/config.yaml"):
 
         logger.info("[MainTrain] Walk-Forward run complete.")
         logger.info(f"[MainTrain] Final stitched equity value: {results['equity_curve'].iloc[-1]:,.2f}")
+        save_run_outputs(results, config)
 
         return results
 
@@ -172,5 +246,23 @@ def main(config_path="config/config.yaml"):
 # ======================================================================
 #                              RUN
 # ======================================================================
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run inverse pairs training/backtest.")
+    parser.add_argument("--config", default="config/config.yaml")
+    parser.add_argument("--smoke", action="store_true", help="Run local deterministic smoke pipeline.")
+    parser.add_argument(
+        "--daily-validation",
+        action="store_true",
+        help="Run the locked daily EOD validation benchmark.",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    if args.daily_validation:
+        from daily_validation import run_daily_validation
+        run_daily_validation()
+    else:
+        config_path = "config/smoke_config.yaml" if args.smoke else args.config
+        main(config_path=config_path, smoke=args.smoke)

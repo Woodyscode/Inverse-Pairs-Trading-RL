@@ -1,0 +1,133 @@
+data:
+  start_date: '2014-01-01'
+  end_date: '2024-01-01'
+  assets_path: config/daily_validation_large_universe.yaml
+  price_type: Adj Close
+  source: yfinance
+  cache_path: outputs/daily_validation/cache/yfinance_daily_500plus_2014_2024.csv
+  manifest_path: outputs/daily_validation/data_manifest.json
+  quality_report_path: outputs/daily_validation/data_quality_report.csv
+  quality_report_md_path: outputs/daily_validation/data_quality_report.md
+  min_history: 1800
+  min_retained_symbols: 500
+  require_full_coverage: true
+  coverage_tolerance_days: 30
+  max_ffill_gap: 5
+  download_threads: false
+  download_chunk_size: 75
+  resample_frequency: 1D
+  wavelet:
+    enabled: true
+    name: db4
+    level: 3
+    window: 64
+pairs:
+  correlation_threshold: 0.5
+  allow_positive: false
+  allow_negative: true
+  use_cointegration: false
+  cointegration_p_value: 0.1
+  min_observations: 300
+  traditional_min_annual_vol: null
+  traditional_max_annual_vol: null
+  inverse_min_annual_vol: null
+  inverse_max_annual_vol: null
+  max_traditional_pairs: 0
+  max_inverse_pairs: 3
+env:
+  window_size: 30
+  initial_capital: 100000
+  max_position: 0.1
+  max_total_exposure: 0.5
+  transaction_cost: 0.0001
+  slippage_cost: 0.0001
+  cost_model: turnover
+  borrow_fee_annual: 0.005
+  financing_rate_annual: 0.02
+  cash_rate_annual: 0.0
+  signal_lag_bars: 1
+  liquidity:
+    enabled: false
+    adv_window: 20
+    max_trade_pct_adv: 0.01
+features:
+  min_periods: 60
+  base_window: 30
+rl:
+  algorithm: PPO
+  hyperparameters:
+    policy: MlpPolicy
+    learning_rate: 0.00015
+    n_steps: 64
+    batch_size: 32
+    timesteps: 256
+    n_epochs: 2
+    gamma: 0.99
+    gae_lambda: 0.95
+    clip_range: 0.2
+    ent_coef: 0.0
+    vf_coef: 0.5
+    max_grad_norm: 0.5
+walkforward:
+  enabled: true
+  train_years: 3
+  validation_months: 6
+  test_months: 6
+  min_train_size: 500
+  min_validation_size: 80
+  min_test_size: 80
+  retrain_pairs_each_window: true
+  retrain_env_each_window: true
+  retrain_kelly_each_window: false
+  mode: rolling
+  step_days: 126
+  max_windows: 2
+  feature_context_days: 252
+validation:
+  run_baselines: true
+elasticnet:
+  alpha: 0.01
+  l1_ratio: 0.5
+  max_iter: 20000
+  importance_threshold: 0.0
+kelly:
+  fraction: 0.25
+  leverage_cap: 3.0
+  volatility_floor: 1e-6
+reward:
+  reward_clip: 5.0
+  pos_penalty: 0.01
+training:
+  log_interval: 100
+  save_dir: outputs\daily_validation\ppo_no_cointegration_filter\models\ppo
+evaluation:
+  rolling_sharpe_window: 90
+  rolling_sortino_window: 90
+  rolling_vol_window: 90
+  annualization_factor: 252
+  save_equity_curve: true
+  compare_to_spy: false
+plotting:
+  equity_curve: false
+  compare_spy: false
+  final_allocation: false
+  return_distribution: false
+  monthly_heatmap: false
+  drawdown_curve: false
+  ulcer_index_curve: false
+  cdar_plot: false
+  rolling_sharpe: false
+  rolling_sortino: false
+  rolling_vol: false
+  trade_pnl_distribution: false
+  gain_to_pain: false
+logging:
+  log_to_file: true
+  log_path: outputs\daily_validation\ppo_no_cointegration_filter\logs
+  verbosity: INFO
+system:
+  seed: 42
+  device: cpu
+  num_workers: 1
+output:
+  run_dir: outputs\daily_validation\ppo_no_cointegration_filter

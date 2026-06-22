@@ -41,6 +41,7 @@ class FeatureSelector:
         self.selected_features = {}     # {(A,B): array of idx}
         self.importances = {}           # {(A,B): array importance}
         self.k_values = {}              # {(A,B): int}
+        self.scalers = {}               # {(A,B): train-fitted scaler}
 
     # -----------------------------------------------------------
     # Fit + select features for ONE pair
@@ -54,6 +55,7 @@ class FeatureSelector:
         # standardize X (important for Elastic Net)
         scaler = StandardScaler()
         Xs = scaler.fit_transform(X)
+        self.scalers[pair] = scaler
 
         model = ElasticNet(
             alpha=self.alpha,
@@ -71,6 +73,11 @@ class FeatureSelector:
         # ------------------------------------
         valid_idx = np.where(importance > self.importance_threshold)[0]
         sorted_valid = valid_idx[np.argsort(importance[valid_idx])[::-1]]
+
+        if len(sorted_valid) == 0:
+            variances = np.nan_to_num(np.var(X, axis=0), nan=0.0, posinf=0.0, neginf=0.0)
+            fallback_k = min(5, X.shape[1])
+            sorted_valid = np.argsort(variances)[::-1][:fallback_k]
 
         # ------------------------------------
         # 2) Automatic elbow detection (optional)
@@ -105,6 +112,9 @@ class FeatureSelector:
         # line from first to last point
         start = np.array([0, y[0]])
         end   = np.array([n - 1, y[-1]])
+        chord = np.linalg.norm(end - start)
+        if chord == 0:
+            return min(5, n)
 
         max_dist = -np.inf
         elbow_k = 10  # default fallback
@@ -113,7 +123,7 @@ class FeatureSelector:
             p = np.array([i, y[i]])
 
             # distance from point to line
-            dist = np.abs(np.cross(end - start, p - start)) / np.linalg.norm(end - start)
+            dist = np.abs(np.cross(end - start, p - start)) / chord
 
             if dist > max_dist:
                 max_dist = dist
@@ -127,7 +137,8 @@ class FeatureSelector:
     def transform_pair(self, pair, X):
         """Return reduced feature matrix for the pair."""
         idx = self.selected_features[pair]
-        return X[:, idx]
+        Xs = self.scalers[pair].transform(X)
+        return Xs[:, idx]
 
     # -----------------------------------------------------------
     # Fit + transform ALL pairs

@@ -1,0 +1,687 @@
+{
+  "protocol": "synthetic rolling train/validation/test; pair and feature selection fit on train only",
+  "variants": {
+    "base": {
+      "status": "pass",
+      "metrics": {
+        "final_value": 100000.04841071746,
+        "total_return": 4.841071745698144e-07,
+        "cagr": 5.083137021744122e-06,
+        "volatility": 1.2549124537259807e-06,
+        "sharpe": 4.226640059833138,
+        "sortino": 11.274545708280211,
+        "max_drawdown": 3.1318344262035597e-07,
+        "drawdown_duration_days": 15,
+        "ulcer_index": 1.5643888838583556e-07,
+        "cdar": -3.0645338100662033e-07,
+        "mar": 16.230542008269417,
+        "calmar_36m": null,
+        "skewness": 1.5917109997358956,
+        "kurtosis": 2.995466228791786,
+        "gain_to_pain": 2.3635377728360174,
+        "monthly_returns": {
+          "2021-01-31 00:00:00": -0.0,
+          "2021-02-28 00:00:00": 0.0,
+          "2021-03-31 00:00:00": 0.0
+        },
+        "win_rate": 0.5454545454545454,
+        "payoff_ratio": 1.9696208074318504,
+        "expectancy": 0.6197931676901001,
+        "profit_factor": 2.363544968918221,
+        "max_consecutive_losses": 5,
+        "alpha": 5.3041303443326075e-06,
+        "beta": 0.0,
+        "tracking_error": 1.2549124537259807e-06,
+        "information_ratio": 4.226693526376305,
+        "up_capture_ratio": null,
+        "down_capture_ratio": null
+      },
+      "selected_pairs": [
+        {
+          "window": 1,
+          "train_start": "2020-01-02",
+          "validation_start": "2020-09-23",
+          "test_start": "2020-11-20",
+          "end": "2021-01-18",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        },
+        {
+          "window": 2,
+          "train_start": "2020-03-02",
+          "validation_start": "2020-11-20",
+          "test_start": "2021-01-19",
+          "end": "2021-03-17",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        }
+      ],
+      "validation_protocol": "rolling_train_validation_test",
+      "window_count": 2,
+      "first_window_baselines": {
+        "cash": {
+          "final_value": 100000.0,
+          "total_return": 0.0,
+          "cagr": 0.0,
+          "volatility": 0.0,
+          "sharpe": 0.0,
+          "sortino": null,
+          "max_drawdown": 0.0,
+          "drawdown_duration_days": 0,
+          "ulcer_index": 0.0,
+          "cdar": 0.0,
+          "mar": null,
+          "calmar_36m": null,
+          "skewness": 0.0,
+          "kurtosis": 0.0,
+          "gain_to_pain": 0.0,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0
+          },
+          "win_rate": 0.0,
+          "payoff_ratio": 0.0,
+          "expectancy": -1.0,
+          "profit_factor": null,
+          "max_consecutive_losses": 0,
+          "alpha": 0.0,
+          "beta": 0.0,
+          "tracking_error": 0.0,
+          "information_ratio": null,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "random": {
+          "final_value": 99937.51605578166,
+          "total_return": -0.0006248394421833892,
+          "cagr": -0.013039962723350063,
+          "volatility": 0.01033555422458951,
+          "sharpe": -1.3801985849497047,
+          "sortino": -1.2447636725002469,
+          "max_drawdown": 0.0018914786748649246,
+          "drawdown_duration_days": 9,
+          "ulcer_index": 0.0013909855293081066,
+          "cdar": -0.0018914786748649001,
+          "mar": -6.894057488795785,
+          "calmar_36m": null,
+          "skewness": -1.9355375813994191,
+          "kurtosis": 6.315554360690288,
+          "gain_to_pain": 0.7218918252565335,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": -0.0006
+          },
+          "win_rate": 0.5454545454545454,
+          "payoff_ratio": 0.6007617764674688,
+          "expectancy": -0.12685721283592621,
+          "profit_factor": 0.7209141317609624,
+          "max_consecutive_losses": 1,
+          "alpha": -0.014265117337359356,
+          "beta": 0.0,
+          "tracking_error": 0.01033555422458951,
+          "information_ratio": -1.380198587069569,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "zscore_mean_reversion": {
+          "final_value": 100021.78811886757,
+          "total_return": 0.00021788118867571704,
+          "cagr": 0.004585487896879181,
+          "volatility": 0.0012642910641700211,
+          "sharpe": 3.9482717662649947,
+          "sortino": 314451623.80434996,
+          "max_drawdown": 5.000000000000582e-05,
+          "drawdown_duration_days": 4,
+          "ulcer_index": 2.886751345948465e-05,
+          "cdar": -5.000000000003894e-05,
+          "mar": 91.70975793757295,
+          "calmar_36m": null,
+          "skewness": 3.1032151738942,
+          "kurtosis": 10.116578033311985,
+          "gain_to_pain": 5.35788977637327,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0002
+          },
+          "win_rate": 0.18181818181818182,
+          "payoff_ratio": 2.6782283511807337,
+          "expectancy": -0.33123120887623014,
+          "profit_factor": 5.356456702361467,
+          "max_consecutive_losses": 1,
+          "alpha": 0.0049917647756804896,
+          "beta": 0.0,
+          "tracking_error": 0.0012642910641700211,
+          "information_ratio": 3.9482718158397105,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        }
+      }
+    },
+    "no_wavelet": {
+      "status": "pass",
+      "metrics": {
+        "final_value": 100000.04841071746,
+        "total_return": 4.841071745698144e-07,
+        "cagr": 5.083137021744122e-06,
+        "volatility": 1.2549124537259807e-06,
+        "sharpe": 4.226640059833138,
+        "sortino": 11.274545708280211,
+        "max_drawdown": 3.1318344262035597e-07,
+        "drawdown_duration_days": 15,
+        "ulcer_index": 1.5643888838583556e-07,
+        "cdar": -3.0645338100662033e-07,
+        "mar": 16.230542008269417,
+        "calmar_36m": null,
+        "skewness": 1.5917109997358956,
+        "kurtosis": 2.995466228791786,
+        "gain_to_pain": 2.3635377728360174,
+        "monthly_returns": {
+          "2021-01-31 00:00:00": -0.0,
+          "2021-02-28 00:00:00": 0.0,
+          "2021-03-31 00:00:00": 0.0
+        },
+        "win_rate": 0.5454545454545454,
+        "payoff_ratio": 1.9696208074318504,
+        "expectancy": 0.6197931676901001,
+        "profit_factor": 2.363544968918221,
+        "max_consecutive_losses": 5,
+        "alpha": 5.3041303443326075e-06,
+        "beta": 0.0,
+        "tracking_error": 1.2549124537259807e-06,
+        "information_ratio": 4.226693526376305,
+        "up_capture_ratio": null,
+        "down_capture_ratio": null
+      },
+      "selected_pairs": [
+        {
+          "window": 1,
+          "train_start": "2020-01-02",
+          "validation_start": "2020-09-23",
+          "test_start": "2020-11-20",
+          "end": "2021-01-18",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        },
+        {
+          "window": 2,
+          "train_start": "2020-03-02",
+          "validation_start": "2020-11-20",
+          "test_start": "2021-01-19",
+          "end": "2021-03-17",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        }
+      ],
+      "validation_protocol": "rolling_train_validation_test",
+      "window_count": 2,
+      "first_window_baselines": {
+        "cash": {
+          "final_value": 100000.0,
+          "total_return": 0.0,
+          "cagr": 0.0,
+          "volatility": 0.0,
+          "sharpe": 0.0,
+          "sortino": null,
+          "max_drawdown": 0.0,
+          "drawdown_duration_days": 0,
+          "ulcer_index": 0.0,
+          "cdar": 0.0,
+          "mar": null,
+          "calmar_36m": null,
+          "skewness": 0.0,
+          "kurtosis": 0.0,
+          "gain_to_pain": 0.0,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0
+          },
+          "win_rate": 0.0,
+          "payoff_ratio": 0.0,
+          "expectancy": -1.0,
+          "profit_factor": null,
+          "max_consecutive_losses": 0,
+          "alpha": 0.0,
+          "beta": 0.0,
+          "tracking_error": 0.0,
+          "information_ratio": null,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "random": {
+          "final_value": 99937.51605578166,
+          "total_return": -0.0006248394421833892,
+          "cagr": -0.013039962723350063,
+          "volatility": 0.01033555422458951,
+          "sharpe": -1.3801985849497047,
+          "sortino": -1.2447636725002469,
+          "max_drawdown": 0.0018914786748649246,
+          "drawdown_duration_days": 9,
+          "ulcer_index": 0.0013909855293081066,
+          "cdar": -0.0018914786748649001,
+          "mar": -6.894057488795785,
+          "calmar_36m": null,
+          "skewness": -1.9355375813994191,
+          "kurtosis": 6.315554360690288,
+          "gain_to_pain": 0.7218918252565335,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": -0.0006
+          },
+          "win_rate": 0.5454545454545454,
+          "payoff_ratio": 0.6007617764674688,
+          "expectancy": -0.12685721283592621,
+          "profit_factor": 0.7209141317609624,
+          "max_consecutive_losses": 1,
+          "alpha": -0.014265117337359356,
+          "beta": 0.0,
+          "tracking_error": 0.01033555422458951,
+          "information_ratio": -1.380198587069569,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "zscore_mean_reversion": {
+          "final_value": 100021.78811886757,
+          "total_return": 0.00021788118867571704,
+          "cagr": 0.004585487896879181,
+          "volatility": 0.0012642910641700211,
+          "sharpe": 3.9482717662649947,
+          "sortino": 314451623.80434996,
+          "max_drawdown": 5.000000000000582e-05,
+          "drawdown_duration_days": 4,
+          "ulcer_index": 2.886751345948465e-05,
+          "cdar": -5.000000000003894e-05,
+          "mar": 91.70975793757295,
+          "calmar_36m": null,
+          "skewness": 3.1032151738942,
+          "kurtosis": 10.116578033311985,
+          "gain_to_pain": 5.35788977637327,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0002
+          },
+          "win_rate": 0.18181818181818182,
+          "payoff_ratio": 2.6782283511807337,
+          "expectancy": -0.33123120887623014,
+          "profit_factor": 5.356456702361467,
+          "max_consecutive_losses": 1,
+          "alpha": 0.0049917647756804896,
+          "beta": 0.0,
+          "tracking_error": 0.0012642910641700211,
+          "information_ratio": 3.9482718158397105,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        }
+      }
+    },
+    "ppo_without_cointegration_filter": {
+      "status": "pass",
+      "metrics": {
+        "final_value": 100000.04841071746,
+        "total_return": 4.841071745698144e-07,
+        "cagr": 5.083137021744122e-06,
+        "volatility": 1.2549124537259807e-06,
+        "sharpe": 4.226640059833138,
+        "sortino": 11.274545708280211,
+        "max_drawdown": 3.1318344262035597e-07,
+        "drawdown_duration_days": 15,
+        "ulcer_index": 1.5643888838583556e-07,
+        "cdar": -3.0645338100662033e-07,
+        "mar": 16.230542008269417,
+        "calmar_36m": null,
+        "skewness": 1.5917109997358956,
+        "kurtosis": 2.995466228791786,
+        "gain_to_pain": 2.3635377728360174,
+        "monthly_returns": {
+          "2021-01-31 00:00:00": -0.0,
+          "2021-02-28 00:00:00": 0.0,
+          "2021-03-31 00:00:00": 0.0
+        },
+        "win_rate": 0.5454545454545454,
+        "payoff_ratio": 1.9696208074318504,
+        "expectancy": 0.6197931676901001,
+        "profit_factor": 2.363544968918221,
+        "max_consecutive_losses": 5,
+        "alpha": 5.3041303443326075e-06,
+        "beta": 0.0,
+        "tracking_error": 1.2549124537259807e-06,
+        "information_ratio": 4.226693526376305,
+        "up_capture_ratio": null,
+        "down_capture_ratio": null
+      },
+      "selected_pairs": [
+        {
+          "window": 1,
+          "train_start": "2020-01-02",
+          "validation_start": "2020-09-23",
+          "test_start": "2020-11-20",
+          "end": "2021-01-18",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        },
+        {
+          "window": 2,
+          "train_start": "2020-03-02",
+          "validation_start": "2020-11-20",
+          "test_start": "2021-01-19",
+          "end": "2021-03-17",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        }
+      ],
+      "validation_protocol": "rolling_train_validation_test",
+      "window_count": 2,
+      "first_window_baselines": {
+        "cash": {
+          "final_value": 100000.0,
+          "total_return": 0.0,
+          "cagr": 0.0,
+          "volatility": 0.0,
+          "sharpe": 0.0,
+          "sortino": null,
+          "max_drawdown": 0.0,
+          "drawdown_duration_days": 0,
+          "ulcer_index": 0.0,
+          "cdar": 0.0,
+          "mar": null,
+          "calmar_36m": null,
+          "skewness": 0.0,
+          "kurtosis": 0.0,
+          "gain_to_pain": 0.0,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0
+          },
+          "win_rate": 0.0,
+          "payoff_ratio": 0.0,
+          "expectancy": -1.0,
+          "profit_factor": null,
+          "max_consecutive_losses": 0,
+          "alpha": 0.0,
+          "beta": 0.0,
+          "tracking_error": 0.0,
+          "information_ratio": null,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "random": {
+          "final_value": 99937.51605578166,
+          "total_return": -0.0006248394421833892,
+          "cagr": -0.013039962723350063,
+          "volatility": 0.01033555422458951,
+          "sharpe": -1.3801985849497047,
+          "sortino": -1.2447636725002469,
+          "max_drawdown": 0.0018914786748649246,
+          "drawdown_duration_days": 9,
+          "ulcer_index": 0.0013909855293081066,
+          "cdar": -0.0018914786748649001,
+          "mar": -6.894057488795785,
+          "calmar_36m": null,
+          "skewness": -1.9355375813994191,
+          "kurtosis": 6.315554360690288,
+          "gain_to_pain": 0.7218918252565335,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": -0.0006
+          },
+          "win_rate": 0.5454545454545454,
+          "payoff_ratio": 0.6007617764674688,
+          "expectancy": -0.12685721283592621,
+          "profit_factor": 0.7209141317609624,
+          "max_consecutive_losses": 1,
+          "alpha": -0.014265117337359356,
+          "beta": 0.0,
+          "tracking_error": 0.01033555422458951,
+          "information_ratio": -1.380198587069569,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "zscore_mean_reversion": {
+          "final_value": 100021.78811886757,
+          "total_return": 0.00021788118867571704,
+          "cagr": 0.004585487896879181,
+          "volatility": 0.0012642910641700211,
+          "sharpe": 3.9482717662649947,
+          "sortino": 314451623.80434996,
+          "max_drawdown": 5.000000000000582e-05,
+          "drawdown_duration_days": 4,
+          "ulcer_index": 2.886751345948465e-05,
+          "cdar": -5.000000000003894e-05,
+          "mar": 91.70975793757295,
+          "calmar_36m": null,
+          "skewness": 3.1032151738942,
+          "kurtosis": 10.116578033311985,
+          "gain_to_pain": 5.35788977637327,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0002
+          },
+          "win_rate": 0.18181818181818182,
+          "payoff_ratio": 2.6782283511807337,
+          "expectancy": -0.33123120887623014,
+          "profit_factor": 5.356456702361467,
+          "max_consecutive_losses": 1,
+          "alpha": 0.0049917647756804896,
+          "beta": 0.0,
+          "tracking_error": 0.0012642910641700211,
+          "information_ratio": 3.9482718158397105,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        }
+      }
+    },
+    "strict_inverse_corr_0_8": {
+      "status": "pass",
+      "metrics": {
+        "final_value": 100000.04841071746,
+        "total_return": 4.841071745698144e-07,
+        "cagr": 5.083137021744122e-06,
+        "volatility": 1.2549124537259807e-06,
+        "sharpe": 4.226640059833138,
+        "sortino": 11.274545708280211,
+        "max_drawdown": 3.1318344262035597e-07,
+        "drawdown_duration_days": 15,
+        "ulcer_index": 1.5643888838583556e-07,
+        "cdar": -3.0645338100662033e-07,
+        "mar": 16.230542008269417,
+        "calmar_36m": null,
+        "skewness": 1.5917109997358956,
+        "kurtosis": 2.995466228791786,
+        "gain_to_pain": 2.3635377728360174,
+        "monthly_returns": {
+          "2021-01-31 00:00:00": -0.0,
+          "2021-02-28 00:00:00": 0.0,
+          "2021-03-31 00:00:00": 0.0
+        },
+        "win_rate": 0.5454545454545454,
+        "payoff_ratio": 1.9696208074318504,
+        "expectancy": 0.6197931676901001,
+        "profit_factor": 2.363544968918221,
+        "max_consecutive_losses": 5,
+        "alpha": 5.3041303443326075e-06,
+        "beta": 0.0,
+        "tracking_error": 1.2549124537259807e-06,
+        "information_ratio": 4.226693526376305,
+        "up_capture_ratio": null,
+        "down_capture_ratio": null
+      },
+      "selected_pairs": [
+        {
+          "window": 1,
+          "train_start": "2020-01-02",
+          "validation_start": "2020-09-23",
+          "test_start": "2020-11-20",
+          "end": "2021-01-18",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        },
+        {
+          "window": 2,
+          "train_start": "2020-03-02",
+          "validation_start": "2020-11-20",
+          "test_start": "2021-01-19",
+          "end": "2021-03-17",
+          "traditional_pairs": [],
+          "inverse_pairs": [
+            [
+              "SMOKE_A",
+              "SMOKE_B"
+            ]
+          ]
+        }
+      ],
+      "validation_protocol": "rolling_train_validation_test",
+      "window_count": 2,
+      "first_window_baselines": {
+        "cash": {
+          "final_value": 100000.0,
+          "total_return": 0.0,
+          "cagr": 0.0,
+          "volatility": 0.0,
+          "sharpe": 0.0,
+          "sortino": null,
+          "max_drawdown": 0.0,
+          "drawdown_duration_days": 0,
+          "ulcer_index": 0.0,
+          "cdar": 0.0,
+          "mar": null,
+          "calmar_36m": null,
+          "skewness": 0.0,
+          "kurtosis": 0.0,
+          "gain_to_pain": 0.0,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0
+          },
+          "win_rate": 0.0,
+          "payoff_ratio": 0.0,
+          "expectancy": -1.0,
+          "profit_factor": null,
+          "max_consecutive_losses": 0,
+          "alpha": 0.0,
+          "beta": 0.0,
+          "tracking_error": 0.0,
+          "information_ratio": null,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "random": {
+          "final_value": 99937.51605578166,
+          "total_return": -0.0006248394421833892,
+          "cagr": -0.013039962723350063,
+          "volatility": 0.01033555422458951,
+          "sharpe": -1.3801985849497047,
+          "sortino": -1.2447636725002469,
+          "max_drawdown": 0.0018914786748649246,
+          "drawdown_duration_days": 9,
+          "ulcer_index": 0.0013909855293081066,
+          "cdar": -0.0018914786748649001,
+          "mar": -6.894057488795785,
+          "calmar_36m": null,
+          "skewness": -1.9355375813994191,
+          "kurtosis": 6.315554360690288,
+          "gain_to_pain": 0.7218918252565335,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": -0.0006
+          },
+          "win_rate": 0.5454545454545454,
+          "payoff_ratio": 0.6007617764674688,
+          "expectancy": -0.12685721283592621,
+          "profit_factor": 0.7209141317609624,
+          "max_consecutive_losses": 1,
+          "alpha": -0.014265117337359356,
+          "beta": 0.0,
+          "tracking_error": 0.01033555422458951,
+          "information_ratio": -1.380198587069569,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        },
+        "zscore_mean_reversion": {
+          "final_value": 100021.78811886757,
+          "total_return": 0.00021788118867571704,
+          "cagr": 0.004585487896879181,
+          "volatility": 0.0012642910641700211,
+          "sharpe": 3.9482717662649947,
+          "sortino": 314451623.80434996,
+          "max_drawdown": 5.000000000000582e-05,
+          "drawdown_duration_days": 4,
+          "ulcer_index": 2.886751345948465e-05,
+          "cdar": -5.000000000003894e-05,
+          "mar": 91.70975793757295,
+          "calmar_36m": null,
+          "skewness": 3.1032151738942,
+          "kurtosis": 10.116578033311985,
+          "gain_to_pain": 5.35788977637327,
+          "monthly_returns": {
+            "2021-01-31 00:00:00": 0.0002
+          },
+          "win_rate": 0.18181818181818182,
+          "payoff_ratio": 2.6782283511807337,
+          "expectancy": -0.33123120887623014,
+          "profit_factor": 5.356456702361467,
+          "max_consecutive_losses": 1,
+          "alpha": 0.0049917647756804896,
+          "beta": 0.0,
+          "tracking_error": 0.0012642910641700211,
+          "information_ratio": 3.9482718158397105,
+          "up_capture_ratio": null,
+          "down_capture_ratio": null
+        }
+      }
+    }
+  },
+  "stress_regimes": {
+    "2014_2019": {
+      "requested": [
+        "2014-01-01",
+        "2019-12-31"
+      ],
+      "status": "skipped_not_covered_by_local_synthetic_data"
+    },
+    "2020": {
+      "requested": [
+        "2020-01-01",
+        "2020-12-31"
+      ],
+      "status": "skipped_not_covered_by_local_synthetic_data"
+    },
+    "2021_2022": {
+      "requested": [
+        "2021-01-01",
+        "2022-12-31"
+      ],
+      "status": "skipped_not_covered_by_local_synthetic_data"
+    },
+    "2023_2024": {
+      "requested": [
+        "2023-01-01",
+        "2024-01-01"
+      ],
+      "status": "skipped_not_covered_by_local_synthetic_data"
+    }
+  }
+}

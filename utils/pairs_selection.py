@@ -4,6 +4,14 @@ from statsmodels.tsa.stattools import coint
 from utils.logger import get_logger
 
 
+def _cointegration_pvalue(prices_df, a, b, min_obs):
+    aligned = prices_df[[a, b]].dropna()
+    if len(aligned) < min_obs:
+        return None
+    _, pval, _ = coint(aligned[a], aligned[b])
+    return float(pval)
+
+
 def find_strong_pairs(returns_df, prices_df, config):
     """
     FINAL VERSION:
@@ -64,6 +72,10 @@ def find_strong_pairs(returns_df, prices_df, config):
         if np.isnan(rho):
             continue
 
+        pair_returns = returns_df[[a, b]].dropna()
+        if len(pair_returns) < min_obs:
+            continue
+
         # Must exceed correlation threshold
         if abs(rho) < corr_thresh:
             continue
@@ -82,20 +94,14 @@ def find_strong_pairs(returns_df, prices_df, config):
                 if vol[a] > trad_max_vol or vol[b] > trad_max_vol:
                     continue
 
-            # Min observations
-            if len(returns_df[a]) < min_obs or len(returns_df[b]) < min_obs:
-                continue
-
             # Correct cointegration: on PRICES
             if require_coint:
                 try:
-                    priceA = prices_df[a].dropna()
-                    priceB = prices_df[b].dropna()
-                    _, pval, _ = coint(priceA, priceB)
+                    pval = _cointegration_pvalue(prices_df, a, b, min_obs)
                 except Exception:
                     continue
 
-                if pval >= p_value_thresh:
+                if pval is None or pval >= p_value_thresh:
                     continue
 
             traditional_pairs.append((a, b))
@@ -106,6 +112,9 @@ def find_strong_pairs(returns_df, prices_df, config):
         # =======================================================
         elif rho < 0 and allow_neg:
 
+            if rho > -abs(corr_thresh):
+                continue
+
             # Volatility screen (optional)
             if inv_min_vol is not None:
                 if vol[a] < inv_min_vol or vol[b] < inv_min_vol:
@@ -114,20 +123,14 @@ def find_strong_pairs(returns_df, prices_df, config):
                 if vol[a] > inv_max_vol or vol[b] > inv_max_vol:
                     continue
 
-            # Min obs
-            if len(returns_df[a]) < min_obs or len(returns_df[b]) < min_obs:
-                continue
-
             # Cointegration on PRICES
             if require_coint:
                 try:
-                    priceA = prices_df[a].dropna()
-                    priceB = prices_df[b].dropna()
-                    _, pval, _ = coint(priceA, priceB)
+                    pval = _cointegration_pvalue(prices_df, a, b, min_obs)
                 except Exception:
                     continue
 
-                if pval >= p_value_thresh:
+                if pval is None or pval >= p_value_thresh:
                     continue
 
             inverse_pairs.append((a, b))

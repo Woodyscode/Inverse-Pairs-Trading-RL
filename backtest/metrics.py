@@ -226,7 +226,7 @@ def calculate_capture_ratios(strategy, benchmark):
 def calculate_monthly_returns(equity_curve):
     monthly = (
         equity_curve
-        .resample("M")
+        .resample("ME")
         .apply(lambda x: x.iloc[-1] / x.iloc[0] - 1 if len(x) > 1 else 0)
     )
     return monthly.round(4).to_dict()

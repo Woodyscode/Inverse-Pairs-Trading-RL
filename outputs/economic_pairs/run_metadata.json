@@ -1,0 +1,192 @@
+{
+  "families": [
+    {
+      "family": "same_sector_etf",
+      "family_type": "normal_etf",
+      "pairs": [
+        [
+          "XLE",
+          "XOP"
+        ],
+        [
+          "XLK",
+          "QQQ"
+        ],
+        [
+          "XLF",
+          "KRE"
+        ],
+        [
+          "XLI",
+          "ITA"
+        ],
+        [
+          "XLV",
+          "IBB"
+        ],
+        [
+          "XRT",
+          "XLY"
+        ],
+        [
+          "XLU",
+          "VPU"
+        ]
+      ]
+    },
+    {
+      "family": "commodity_related_etf",
+      "family_type": "normal_etf",
+      "pairs": [
+        [
+          "GLD",
+          "SLV"
+        ],
+        [
+          "USO",
+          "XLE"
+        ],
+        [
+          "UNG",
+          "XLE"
+        ],
+        [
+          "URA",
+          "URNM"
+        ],
+        [
+          "CCJ",
+          "URA"
+        ],
+        [
+          "CCJ",
+          "URNM"
+        ]
+      ]
+    },
+    {
+      "family": "index_market_cap_etf",
+      "family_type": "normal_etf",
+      "pairs": [
+        [
+          "SPY",
+          "IVV"
+        ],
+        [
+          "QQQ",
+          "XLK"
+        ],
+        [
+          "IWM",
+          "VB"
+        ],
+        [
+          "DIA",
+          "SPY"
+        ]
+      ]
+    },
+    {
+      "family": "volatility_hedge_isolated",
+      "family_type": "volatility_inverse_leveraged_isolated",
+      "pairs": [
+        [
+          "VIXY",
+          "UVXY"
+        ],
+        [
+          "VIXY",
+          "SVXY"
+        ],
+        [
+          "VIXY",
+          "VXX"
+        ],
+        [
+          "VIXY",
+          "VIXM"
+        ],
+        [
+          "VIXY",
+          "TVIXF"
+        ],
+        [
+          "UVXY",
+          "SVXY"
+        ],
+        [
+          "UVXY",
+          "VXX"
+        ],
+        [
+          "UVXY",
+          "VIXM"
+        ],
+        [
+          "UVXY",
+          "TVIXF"
+        ],
+        [
+          "SVXY",
+          "VXX"
+        ],
+        [
+          "SVXY",
+          "VIXM"
+        ],
+        [
+          "SVXY",
+          "TVIXF"
+        ],
+        [
+          "VXX",
+          "VIXM"
+        ],
+        [
+          "VXX",
+          "TVIXF"
+        ],
+        [
+          "VIXM",
+          "TVIXF"
+        ]
+      ]
+    }
+  ],
+  "windows": [
+    {
+      "window": 1,
+      "train_start_idx": 0,
+      "train_end_idx": 756,
+      "validation_end_idx": 882,
+      "test_end_idx": 1008,
+      "train_start": "2014-01-02T00:00:00",
+      "validation_start": "2017-01-03T00:00:00",
+      "test_start": "2017-07-05T00:00:00",
+      "end": "2018-01-02T00:00:00"
+    },
+    {
+      "window": 2,
+      "train_start_idx": 126,
+      "train_end_idx": 882,
+      "validation_end_idx": 1008,
+      "test_end_idx": 1134,
+      "train_start": "2014-07-03T00:00:00",
+      "validation_start": "2017-07-05T00:00:00",
+      "test_start": "2018-01-03T00:00:00",
+      "end": "2018-07-03T00:00:00"
+    }
+  ],
+  "price_type": "Adj Close",
+  "cache_path": "outputs\\daily_validation\\cache\\yfinance_daily_500plus_2014_2024.csv",
+  "oos_adf_p_threshold": 0.1,
+  "oos_cointegration_p_threshold": 0.1,
+  "max_survival_half_life_days": 126,
+  "broad_compare": {
+    "available": true,
+    "best_broad_family": "inverse_corr_only",
+    "best_broad_return": 0.0118548404893439,
+    "best_economic_family": "commodity_related_etf",
+    "best_economic_return": 0.0016924808987590634
+  }
+}

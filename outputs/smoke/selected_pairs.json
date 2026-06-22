@@ -1,0 +1,14 @@
+[
+  {
+    "window": 1,
+    "start": "2020-01-02",
+    "end": "2021-03-17",
+    "traditional_pairs": [],
+    "inverse_pairs": [
+      [
+        "SMOKE_A",
+        "SMOKE_B"
+      ]
+    ]
+  }
+]

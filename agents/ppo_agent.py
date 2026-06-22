@@ -44,6 +44,7 @@ class PPOAgent(AgentBase):
 
         hp = config["rl"]["hyperparameters"]
         device_cfg = config["system"].get("device", "cpu")
+        seed = config.get("system", {}).get("seed", None)
 
         if device_cfg not in ["cpu", "cuda"]:
             logger.warning(f"[PPOAgent] Invalid device '{device_cfg}', using CPU")
@@ -78,9 +79,10 @@ class PPOAgent(AgentBase):
             ent_coef=hp.get("ent_coef", 0.00),
             vf_coef=hp.get("vf_coef", 0.50),
             max_grad_norm=hp.get("max_grad_norm", 0.5),
+            seed=seed,
             device=device_cfg,
             verbose=1,
-            tensorboard_log="logs/tensorboard/",
+            tensorboard_log=config.get("training", {}).get("tensorboard_log", None),
         )
 
 
@@ -124,7 +126,7 @@ class PPOAgent(AgentBase):
             total_timesteps=timesteps,
             log_interval=log_interval,
             callback=callbacks,
-            progress_bar=True,
+            progress_bar=self.config.get("training", {}).get("progress_bar", True),
         )
 
         # Save final model

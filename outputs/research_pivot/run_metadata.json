@@ -1,0 +1,82 @@
+{
+  "variants": [
+    {
+      "name": "inverse_corr_only",
+      "side": "inverse",
+      "threshold": 0.5,
+      "use_cointegration": false,
+      "constraint": null
+    },
+    {
+      "name": "inverse_corr_plus_cointegration",
+      "side": "inverse",
+      "threshold": 0.5,
+      "use_cointegration": true,
+      "constraint": null
+    },
+    {
+      "name": "positive_corr_only",
+      "side": "positive",
+      "threshold": 0.7,
+      "use_cointegration": false,
+      "constraint": null
+    },
+    {
+      "name": "positive_corr_plus_cointegration",
+      "side": "positive",
+      "threshold": 0.7,
+      "use_cointegration": true,
+      "constraint": null
+    },
+    {
+      "name": "positive_sector_industry_cointegration",
+      "side": "positive",
+      "threshold": 0.7,
+      "use_cointegration": true,
+      "constraint": "sector_industry"
+    },
+    {
+      "name": "positive_etf_family_cointegration",
+      "side": "positive",
+      "threshold": 0.7,
+      "use_cointegration": true,
+      "constraint": "etf_family"
+    }
+  ],
+  "windows": [
+    {
+      "window": 1,
+      "train_start_idx": 0,
+      "train_end_idx": 756,
+      "validation_end_idx": 882,
+      "test_end_idx": 1008,
+      "train_start": "2014-01-02T00:00:00",
+      "validation_start": "2017-01-03T00:00:00",
+      "test_start": "2017-07-05T00:00:00",
+      "end": "2018-01-02T00:00:00"
+    },
+    {
+      "window": 2,
+      "train_start_idx": 126,
+      "train_end_idx": 882,
+      "validation_end_idx": 1008,
+      "test_end_idx": 1134,
+      "train_start": "2014-07-03T00:00:00",
+      "validation_start": "2017-07-05T00:00:00",
+      "test_start": "2018-01-03T00:00:00",
+      "end": "2018-07-03T00:00:00"
+    }
+  ],
+  "ppo_decisions": {
+    "inverse_corr_only": "skipped_zscore_gate_not_met",
+    "inverse_corr_plus_cointegration": "skipped_zscore_gate_not_met",
+    "positive_corr_only": "skipped_zscore_gate_not_met",
+    "positive_corr_plus_cointegration": "skipped_zscore_gate_not_met",
+    "positive_sector_industry_cointegration": "skipped_zscore_gate_not_met",
+    "positive_etf_family_cointegration": "skipped_zscore_gate_not_met"
+  },
+  "max_cointegration_candidates": 750,
+  "max_pairs": 3,
+  "entry_z": 1.0,
+  "zscore_lookback": 60
+}

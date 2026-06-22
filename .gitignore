@@ -23,3 +23,5 @@ logs/
 # OS junk
 Thumbs.db
 .DS_Store
+
+outputs/daily_validation/cache/

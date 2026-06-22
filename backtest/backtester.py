@@ -45,9 +45,11 @@ class Backtester:
 
         obs, info = self.env.reset()
 
-        portfolio_vals = []
+        portfolio_vals = [self.env.portfolio_value]
         trade_pnls = []
-        dates = []
+        friction_rows = []
+        start_idx = min(self.env.current_step, len(self.price_index) - 1)
+        dates = [self.price_index[start_idx]]
 
         terminated = False
         truncated = False
@@ -64,14 +66,27 @@ class Backtester:
             pv = info.get("portfolio_value", None)
             if pv is None:
                 raise RuntimeError("[Backtester] Env missing portfolio_value in info.")
-            portfolio_vals.append(pv)
 
-            # PnL for this step
-            trade_pnls.append(info.get("pnl", 0.0))
+            if info.get("has_transition", True):
+                portfolio_vals.append(pv)
+                trade_pnls.append(info.get("pnl", 0.0))
 
-            # Date alignment
-            step_idx = min(self.env.current_step, len(self.price_index) - 1)
-            dates.append(self.price_index[step_idx])
+                step_idx = min(self.env.current_step, len(self.price_index) - 1)
+                dates.append(self.price_index[step_idx])
+                friction_rows.append({
+                    "date": self.price_index[step_idx],
+                    "turnover": info.get("turnover", 0.0),
+                    "transaction_costs": info.get("transaction_costs", 0.0),
+                    "carry_costs": info.get("carry_costs", 0.0),
+                    "borrow_cost": info.get("borrow_cost", 0.0),
+                    "financing_cost": info.get("financing_cost", 0.0),
+                    "cash_credit": info.get("cash_credit", 0.0),
+                    "gross_exposure": sum(abs(v) for v in getattr(self.env, "positions", {}).values()),
+                    "active_positions": sum(
+                        1 for v in getattr(self.env, "positions", {}).values()
+                        if abs(v) > 1e-9
+                    ),
+                })
 
         # ===============================================================
         # Equity Curve
@@ -111,11 +126,18 @@ class Backtester:
         if return_curve:
             return metrics, equity_curve
 
+        pair_pnls = {}
+        for pair, values in getattr(self.env, "per_pair_pnls", {}).items():
+            pair_key = f"{pair[0]}-{pair[1]}"
+            pair_pnls[pair_key] = [float(v) for v in values]
+
         return {
             "equity_curve": equity_curve,
             "spy_curve": spy_curve,
             "metrics": metrics,
             "trade_pnls": trade_pnls,
+            "frictions": pd.DataFrame(friction_rows),
+            "pair_pnls": pair_pnls,
         }
 
 
