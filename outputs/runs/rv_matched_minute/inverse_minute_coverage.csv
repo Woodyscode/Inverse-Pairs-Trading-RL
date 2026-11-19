@@ -1,0 +1,5 @@
+window,pair,split,sessions,qualified,median_observed_consecutive_minutes,max_observed_consecutive_minutes
+8,ULE/UUP,train,756,0,0.0,14
+8,ULE/UUP,test,126,0,0.0,3
+9,ULE/UUP,train,756,0,0.0,15
+9,ULE/UUP,test,126,0,0.0,62

@@ -1,0 +1,23 @@
+{
+  "files": {
+    "outputs\\runs\\cache\\rv_sp500\\membership_intervals.parquet": "83141f0c7d9eb69793db60694432426ea94eaa8c92e7e50c741bb5f605c48d54",
+    "outputs\\runs\\cache\\rv_sp500\\prices.parquet": "02ed2e4f3fd409f1a2e3ecd9d7c8a54e26b85d15a521e022b351868b75f07ddc",
+    "outputs\\runs\\cache\\rv_sp500\\no_trade_days.csv": "e6ce9efaeea91b3e3e8198a6a3b20bf56d217e82fe83c83b133fab27492de2f1",
+    "outputs\\runs\\cache\\rv_sp500\\AAPL.parquet": "4097e799ce9159614b5e727479d160b7358f12ed9cad6691841d3e43350d7b94",
+    "outputs\\runs\\cache\\rv_sp500\\AMZN.parquet": "ebc67525a3a9a7dcc36438bad30eb22840ff7df5d8fa6faa1d7bbaf8d0937569",
+    "outputs\\runs\\cache\\rv_sp500\\SPY.parquet": "267e48ab348dcf71003d73247e7ac692c5c73fab176db9bd2248cdd16f0a2f2a",
+    "outputs\\runs\\cache\\rv_sp500\\TSLA.parquet": "c1dbed2c65cf508b9c5790391b35f5948725c8f2a937f0d73d4f06ddf6e87394",
+    "C:\\Users\\kwood\\Projects\\Inverse-Pairs-Trading-RL\\relative_value_horizons.py": "7f8cbe3e42bf345946d9e8db1ce3bfd97a933dc2282eb9e75a76cf787abba4e2",
+    "data\\minute_features.py": "8f528dae314088051828c75823f883f6d77c9e621c051eb96505955c856070ac",
+    "outputs\\runs\\residual_control_liquidity_50k\\folds.csv": "6a20bee5d0aef5442a7b1487ded3516daed7207a3808e7fe8f9c808658f3197e"
+  },
+  "packages": {
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "statsmodels": "0.14.6",
+    "scikit-learn": "1.9.0",
+    "pyarrow": "23.0.1"
+  },
+  "daily_source": "https://github.com/Johnbrick123/sp500-data/releases/tag/data",
+  "minute_revision": "eff0dac55d843b3b83caec819efa213021a3e3e5"
+}
