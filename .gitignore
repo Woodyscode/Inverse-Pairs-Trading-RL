@@ -30,6 +30,8 @@ outputs/runs/cache/
 
 # Local replays and preliminary runs. Published research evidence lives under outputs/runs.
 outputs/test_tmp/
+# Personalized PDF correspondence is prepared locally for the sender.
+output/pdf/
 outputs/runs/audit_ppo_pilot/
 outputs/runs/inverse_tracking_pilot/
 outputs/runs/strict_alpha_control/
