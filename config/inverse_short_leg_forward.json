@@ -1,0 +1,18 @@
+{
+  "frozen_rule_commit": "1976c6c",
+  "first_signal_session": "2026-11-19",
+  "last_session": "2026-12-31",
+  "deployment": "outputs/runs/strict_inverse_alpha_final/2026/test/deployment.csv",
+  "qualification": "outputs/runs/strict_inverse_alpha_final/2026/qualification.csv",
+  "minimum_negative_correlation_magnitude": 0.8,
+  "primary": "Original raw convergence rule, equal entry dollars, one session, existing costs, participation and wind-down",
+  "benchmark": "Long the same leader on the same entries. Match the pair's estimated factor exposure by covariance-weighted projection, subject to observed volume and gross limits.",
+  "factors": ["SPY", "TLT", "USO", "QQQ-SPY", "IWM-SPY", "DIA-SPY"],
+  "estimation_sessions": 60,
+  "signed_hedge_diagnostic": "Use trailing signed OLS slope of leader on laggard. Long the leader and hold minus that slope in the laggard, normalized to unit gross. Report separately from the original opposite-leg trade.",
+  "exclusions": [[], ["SCO/USO"]],
+  "primary_endpoint": "Paired daily net PnL of original pair less factor-matched leader, all pairs and excluding SCO/USO with fresh ranking",
+  "inference": "Report both windows separately. Forward only: ten-session paired circular blocks, 95% intervals, two one-sided HAC tests Holm-corrected across the two universes. Report sample size without repeated interim selection.",
+  "execution_evidence": "Report original bar-cost scenario separately from quote/locate evidence; never infer a historical locate from a present-day flag or from reported short-sale volume.",
+  "model_policy": "No PPO, wavelet, threshold tuning or model selection during the forward period."
+}
