@@ -59,14 +59,14 @@ With the [research dependencies](../../../requirements-research.txt) and the [or
 
 ```shell
 python -m pytest tests -q -p no:cacheprovider
-python short_leg_diagnostics.py --output outputs/test_tmp/short_leg_replay
-python short_leg_execution_evidence.py --fills outputs/test_tmp/short_leg_replay/fills.parquet --output outputs/test_tmp/short_leg_coverage
+python -m experiments.convergence.short_leg_diagnostics --output outputs/test_tmp/short_leg_replay
+python -m experiments.convergence.short_leg_execution_evidence --fills outputs/test_tmp/short_leg_replay/fills.parquet --output outputs/test_tmp/short_leg_coverage
 ```
 
 After the registered interval, supply full-history daily chart JSON and minute Parquet directories on the original data conventions, including corporate actions and the calibration period from 2020. Input checksums are saved with each run.
 
 ```shell
-python short_leg_diagnostics.py --forward-daily PATH_TO_DAILY --forward-minute PATH_TO_MINUTES --output outputs/runs/inverse_short_leg_forward
+python -m experiments.convergence.short_leg_diagnostics --forward-daily PATH_TO_DAILY --forward-minute PATH_TO_MINUTES --output outputs/runs/inverse_short_leg_forward
 ```
 
-For a fill-level evidence audit, add `--quotes QUOTES.csv --locates LOCATES.csv` to the evidence command. Quotes require `symbol,ts,bid,ask,bid_size,ask_size,price_multiplier`. Locates require `symbol,available_at,valid_until,max_shares,price_multiplier`. Times must carry UTC offsets, quantities are shares, and each multiplier converts vendor price to the ledger's corporate-action basis. Use broker-confirmed account-specific inventory. The audit checks the latest quote strictly before bar end within two seconds, side-specific displayed depth, and the latest locate available by the 10:30 decision that remains valid through the entry. The signed dollar `quote_pnl_change` reprices the same units against the applicable quote; add it to gross PnL and model commission, carry and borrow separately. A missing quote, insufficient depth or unknown locate leaves execution unverified. The audit measures quote coverage on simulated orders and cannot establish queue position, impact, actual fills or borrow recalls. [Evidence reader](../../../short_leg_execution_evidence.py) · [Snapshot and source checksums](manifest.json)
+For a fill-level evidence audit, add `--quotes QUOTES.csv --locates LOCATES.csv` to the evidence command. Quotes require `symbol,ts,bid,ask,bid_size,ask_size,price_multiplier`. Locates require `symbol,available_at,valid_until,max_shares,price_multiplier`. Times must carry UTC offsets, quantities are shares, and each multiplier converts vendor price to the ledger's corporate-action basis. Use broker-confirmed account-specific inventory. The audit checks the latest quote strictly before bar end within two seconds, side-specific displayed depth, and the latest locate available by the 10:30 decision that remains valid through the entry. The signed dollar `quote_pnl_change` reprices the same units against the applicable quote; add it to gross PnL and model commission, carry and borrow separately. A missing quote, insufficient depth or unknown locate leaves execution unverified. The audit measures quote coverage on simulated orders and cannot establish queue position, impact, actual fills or borrow recalls. [Evidence reader](../../../experiments/convergence/short_leg_execution_evidence.py) · [Snapshot and source checksums](manifest.json)

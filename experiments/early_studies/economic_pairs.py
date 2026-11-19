@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from data.loaders import DataLoader
-from research_pivot import (
+from experiments.early_studies.research_pivot import (
     _backtest_policy,
     _diagnose_pair,
     _eg_pvalue,

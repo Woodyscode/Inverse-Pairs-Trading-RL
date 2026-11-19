@@ -85,12 +85,12 @@ The dated folders contain the full screen, training cutoff, signed hedge, requal
 From the repository root, use the pinned cached inputs identified in the manifests. The following commands use fresh output names. The fetch step reuses existing files and requires network access for missing files. A later vendor download may differ from the snapshot, so compare input hashes. Model artifacts and reports from previous runs must remain available for archived analyses.
 
 ```powershell
-python strict_alpha_study.py --fetch
-python strict_alpha_study.py --output outputs/test_tmp/strict_alpha_replica
-python strict_daily_coverage.py --output outputs/test_tmp/strict_daily_replica
-python strict_control_validation.py --replay --output outputs/test_tmp/strict_seed_replica
-python strict_control_validation.py --output outputs/test_tmp/strict_reward_replica
-python strict_alpha_evidence.py --root outputs/test_tmp/strict_alpha_replica --runs outputs/runs
+python -m experiments.forecasting.strict_alpha_study --fetch
+python -m experiments.forecasting.strict_alpha_study --output outputs/test_tmp/strict_alpha_replica
+python -m experiments.forecasting.strict_daily_coverage --output outputs/test_tmp/strict_daily_replica
+python -m experiments.portfolio_control.strict_control_validation --replay --output outputs/test_tmp/strict_seed_replica
+python -m experiments.portfolio_control.strict_control_validation --output outputs/test_tmp/strict_reward_replica
+python -m experiments.forecasting.strict_alpha_evidence --root outputs/test_tmp/strict_alpha_replica --runs outputs/runs
 python -m pytest tests -q -p no:cacheprovider
 ```
 

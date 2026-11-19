@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from inverse_convergence_study import PAIR_WEIGHTS, events
-from inverse_tracking_study import enter_weighted
-from strict_alpha_study import marked_trade
+from experiments.convergence.inverse_convergence_study import PAIR_WEIGHTS, events
+from experiments.discovery.inverse_tracking_study import enter_weighted
+from experiments.forecasting.strict_alpha_study import marked_trade
 
 
 def tape(n, trend, morning):

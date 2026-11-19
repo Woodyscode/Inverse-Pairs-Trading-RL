@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 
 from data.wavelet import donoho_johnstone_endpoint
-from inverse_tracking_study import enter_weighted
-from strict_alpha_evidence import block_interval
-from strict_alpha_study import (
+from experiments.discovery.inverse_tracking_study import enter_weighted
+from experiments.forecasting.strict_alpha_evidence import block_interval
+from experiments.forecasting.strict_alpha_study import (
     CAPITAL,
     SNAPSHOT,
     STOP,
@@ -333,9 +333,9 @@ def run(out):
     sources = [
         Path(__file__),
         Path("data/wavelet.py"),
-        Path("strict_alpha_study.py"),
-        Path("inverse_tracking_study.py"),
-        Path("strict_alpha_evidence.py"),
+        Path("experiments/forecasting/strict_alpha_study.py"),
+        Path("experiments/discovery/inverse_tracking_study.py"),
+        Path("experiments/forecasting/strict_alpha_evidence.py"),
         BASE / "manifest.json",
         *BASE.glob("20*/qualification.csv"),
         *BASE.glob("20*/*/deployment.csv"),

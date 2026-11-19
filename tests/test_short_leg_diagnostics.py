@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 
-from short_leg_diagnostics import exposure, half_spread, opening_hour
-from short_leg_execution_evidence import audit
+from experiments.convergence.short_leg_diagnostics import exposure, half_spread, opening_hour
+from experiments.convergence.short_leg_execution_evidence import audit
 
 
 def test_inverse_pair_reinforces_factor_and_signed_hedge_removes_it():

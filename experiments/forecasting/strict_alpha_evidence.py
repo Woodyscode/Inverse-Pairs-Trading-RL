@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from strict_alpha_study import CAPITAL, FEE, SEED, hac_p, holm
+from experiments.forecasting.strict_alpha_study import CAPITAL, FEE, SEED, hac_p, holm
 
 
 def block_interval(series):
@@ -145,10 +145,10 @@ def summarize(root, runs):
     pd.DataFrame(budgets).to_csv(dest / "synthetic_budget_checkpoints.csv", index=False)
     inputs = [
         Path(__file__),
-        Path("strict_control_validation.py"),
+        Path("experiments/portfolio_control/strict_control_validation.py"),
         Path("env/spread_control.py"),
         Path("env/features/residual.py"),
-        Path("residual_control_study.py"),
+        Path("experiments/portfolio_control/residual_control_study.py"),
         legacy / "manifest.json",
         legacy / "bars.csv",
         runs / "strict_daily_alpha_coverage" / "manifest.json",

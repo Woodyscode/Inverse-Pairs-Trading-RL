@@ -9,7 +9,7 @@ import pandas as pd
 import torch
 
 from env.spread_control import SpreadControlEnv
-from residual_control_study import (
+from experiments.portfolio_control.residual_control_study import (
     evaluate,
     make_data,
     replicate_synthetic,

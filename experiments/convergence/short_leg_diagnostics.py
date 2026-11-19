@@ -13,10 +13,10 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from inverse_convergence_study import BASE, PAIR_WEIGHTS, events, fill, portfolio
-from inverse_tracking_study import carry_years
-from strict_alpha_evidence import block_interval
-from strict_alpha_study import (
+from experiments.convergence.inverse_convergence_study import BASE, PAIR_WEIGHTS, events, fill, portfolio
+from experiments.discovery.inverse_tracking_study import carry_years
+from experiments.forecasting.strict_alpha_evidence import block_interval
+from experiments.forecasting.strict_alpha_study import (
     CAPITAL,
     FEE,
     SNAPSHOT,
@@ -567,12 +567,12 @@ def run(output, forward_daily=None, forward_minute=None):
     )
     sources = [
         PROTOCOL,
-        Path("strict_alpha_evidence.py"),
+        Path("experiments/forecasting/strict_alpha_evidence.py"),
         *ORIGINAL.glob("signals_*.parquet"),
         Path(__file__),
-        Path("inverse_convergence_study.py"),
-        Path("inverse_tracking_study.py"),
-        Path("strict_alpha_study.py"),
+        Path("experiments/convergence/inverse_convergence_study.py"),
+        Path("experiments/discovery/inverse_tracking_study.py"),
+        Path("experiments/forecasting/strict_alpha_study.py"),
         BASE / "manifest.json",
         ORIGINAL / "manifest.json",
         *BASE.glob("20*/qualification.csv"),

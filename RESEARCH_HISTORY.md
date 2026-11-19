@@ -18,14 +18,14 @@ Run discovery from the repository root with the frozen daily market caches and a
 
 ```bash
 python -m data.fetch_inverse_etfs
-python inverse_pair_discovery.py --output outputs/runs/my_inverse_discovery
+python -m experiments.discovery.inverse_pair_discovery --output outputs/runs/my_inverse_discovery
 ```
 
 The [discovery report](outputs/runs/inverse_discovery_universe/report.md) and [asset-class breakdown](outputs/runs/inverse_discovery_universe/asset_class_funnel.csv) cover inverse ETFs on a common benchmark, ETF pairs spanning asset classes, different factors within a macro asset class, and stocks or sectors paired with hedge instruments. The [SPY-hedged relative-value study](experiments/relative_value/README.md) has its own runner, results and research question.
 
 ### Does an inverse ETF's tracking deviation reverse?
 
-The [tracking study](inverse_tracking_study.py) uses the strict screen to select a pair, then uses its return tracking deviation to decide whether to enter. If IWM rises 1.00% and the fitted relationship predicts RWM will fall 1.00%, an actual RWM return of −0.70% leaves a +0.30 percentage point deviation. A positive extreme prompts a short position in the inverse-tracking basket. With a negative hedge ratio, this means shorting both legs, in proportion to their fitted exposures. The reference ETF approximates the index in the fund mandate. This signal measures a deviation between market returns. Establishing a premium to NAV would require separate NAV data. [RWM daily investment objective](https://www.proshares.com/our-etfs/leveraged-and-inverse/rwm)
+The [tracking study](experiments/discovery/inverse_tracking_study.py) uses the strict screen to select a pair, then uses its return tracking deviation to decide whether to enter. If IWM rises 1.00% and the fitted relationship predicts RWM will fall 1.00%, an actual RWM return of −0.70% leaves a +0.30 percentage point deviation. A positive extreme prompts a short position in the inverse-tracking basket. With a negative hedge ratio, this means shorting both legs, in proportion to their fitted exposures. The reference ETF approximates the index in the fund mandate. This signal measures a deviation between market returns. Establishing a premium to NAV would require separate NAV data. [RWM daily investment objective](https://www.proshares.com/our-etfs/leveraged-and-inverse/rwm)
 
 The study starts with 16 designed inverse-ETF pairs from the last discovery fold. Training ran from January 7, 2020 to January 5, 2023. Each eligible pair needed correlation at or below −0.80 overall, in each training third, and again in the 2023 validation period before the 2024–2025 test. Each leg needed $10 million median training dollar volume over the final 60 sessions. A training-only unit check compares the two feeds' opening prices under as-traded and split-adjusted conventions and requires the 99th percentile discrepancy to be at most 1%. SQQQ uses split-adjusted minute prices. HYG failed reconciliation, excluding SJB/HYG. All 15 remaining pairs qualified. [Pair calibrations](outputs/runs/inverse_etf_tracking/calibration.csv) · [Feed checks](outputs/runs/inverse_etf_tracking/data_quality.csv)
 
@@ -42,7 +42,7 @@ Values are total net P&L divided by total gross entry notional across events. Al
 
 ```bash
 python -m data.fetch_tracking_minutes
-python inverse_tracking_study.py --output outputs/runs/my_inverse_tracking
+python -m experiments.discovery.inverse_tracking_study --output outputs/runs/my_inverse_tracking
 ```
 
 ## Post-repair historical check
@@ -86,7 +86,7 @@ The live runner is disabled. Research checkpoints depend on fold-specific pair o
 
 ## Residual-spread portfolio control
 
-The [residual-control study](residual_control_study.py) compares cash, seeded random actions, a z-score rule, Ridge, XGBoost, PPO, and PPO supplied with the Ridge forecast. All seven share the same pair, dates, execution code and trading costs in each comparison. Each fold selects at most one pair for the three-action experiment. A long signal targets dollar weights proportional to `(1, -beta)`. A negative log-price hedge ratio therefore buys both legs. A short signal reverses both weights, and flat requests liquidation.
+The [residual-control study](experiments/portfolio_control/residual_control_study.py) compares cash, seeded random actions, a z-score rule, Ridge, XGBoost, PPO, and PPO supplied with the Ridge forecast. All seven share the same pair, dates, execution code and trading costs in each comparison. Each fold selects at most one pair for the three-action experiment. A long signal targets dollar weights proportional to `(1, -beta)`. A negative log-price hedge ratio therefore buys both legs. A short signal reverses both weights, and flat requests liquidation.
 
 The market state includes the 30-session residual z-score and its change, residual volatility, a trailing estimate of reversion speed, a trailing ADF diagnostic, hedge estimates and relative volume. The inventory state includes signed exposure, unrealized PnL using average acquisition prices, and holding time. The hedge used for sizing expands during training and freezes at the training cutoff. The rolling hedge feature and stationarity diagnostics continue to update using observed prices. At signal close s, supervised models forecast the attainable simple basket return from close s+1 to s+2. The Ridge forecasts used to train PPO come from expanding blocks fitted only to labels that had matured by the prediction date.
 
@@ -95,7 +95,7 @@ The reward is 100 times the sum of net portfolio return, a negative variance pen
 To reproduce the 50,000-step historical comparison with the existing raw snapshot, use a fresh output directory.
 
 ```bash
-python residual_control_study.py --steps 50000 --capacity-mode partial-fill --strict-execution --output outputs/runs/my_residual_study
+python -m experiments.portfolio_control.residual_control_study --steps 50000 --capacity-mode partial-fill --strict-execution --output outputs/runs/my_residual_study
 ```
 
 The default full-target screen requires a complete target to fit in one session at the participation limit. Partial-fill mode retains the same inverse-correlation, Holm-adjusted log-cointegration, hedge sign, half-life, subwindow stability and cost screens. It allows smaller fills for lower-capacity pairs. Strict execution sizes target inventory to one session of trailing exit capacity, limits each order using both prior average dollar volume and observed execution-day dollar volume, and reserves the final 20 sessions of each episode for liquidation. A fold fails if final inventory cannot settle within the limit. The `--synthetic-only` option runs the controlled study independently. The `--verify-holdouts 5` option replays saved synthetic policies from the specified output directory on five new continuations, using the original settings.

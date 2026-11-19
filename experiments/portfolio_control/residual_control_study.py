@@ -486,7 +486,7 @@ def main(args):
     meta["source_sha256"] = {
         name: hashlib.sha256(Path(name).read_bytes()).hexdigest()
         for name in (
-            "residual_control_study.py",
+            "experiments/portfolio_control/residual_control_study.py",
             "env/spread_control.py",
             "env/features/residual.py",
             "backtest/residual_reports.py",

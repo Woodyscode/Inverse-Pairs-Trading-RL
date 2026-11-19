@@ -35,8 +35,8 @@ A companion Ridge study tested the same denoising method on the earlier return-t
 From the repository root, restore the market snapshots specified in the archived manifest, install the research dependencies, and use new output directories. The runners verify the market-input checksums before simulation. The portfolio metrics count completed trades. The event outcomes include every scorable contraction, even when another position occupied the book. Gap reopening measures the original leader's relative return from the synchronized entry mark to the next target mark. Full recovery compares the target mark to the pre-contraction close using the original anchor.
 
 ```shell
-python strict_alpha_study.py --fetch
-python inverse_convergence_study.py --output outputs/test_tmp/gap_reopening_replica
-python wavelet_residual_study.py --output outputs/test_tmp/dj_residual_replica
+python -m experiments.forecasting.strict_alpha_study --fetch
+python -m experiments.convergence.inverse_convergence_study --output outputs/test_tmp/gap_reopening_replica
+python -m experiments.forecasting.wavelet_residual_study --output outputs/test_tmp/dj_residual_replica
 python -m pytest tests -q -p no:cacheprovider
 ```

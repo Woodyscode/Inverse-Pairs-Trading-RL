@@ -5,7 +5,7 @@ import pandas as pd
 import pywt
 
 from data.wavelet import causal_wavelet_denoise, donoho_johnstone_endpoint
-from wavelet_residual_study import transforms
+from experiments.forecasting.wavelet_residual_study import transforms
 
 
 def test_universal_threshold_matches_reference_at_trade_time():

@@ -305,7 +305,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     if args.daily_validation:
-        from daily_validation import run_daily_validation
+        from experiments.early_studies.daily_validation import run_daily_validation
         run_daily_validation()
     else:
         config_path = "config/smoke_config.yaml" if args.smoke else args.config

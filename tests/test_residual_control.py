@@ -3,7 +3,7 @@ import pytest
 
 from env.features.residual import alpha_forecasts, residual_state
 from env.spread_control import SpreadControlEnv
-from residual_control_study import synthetic
+from experiments.portfolio_control.residual_control_study import synthetic
 
 
 def test_log_hedge_features_and_forecasts_respect_the_information_cutoff():

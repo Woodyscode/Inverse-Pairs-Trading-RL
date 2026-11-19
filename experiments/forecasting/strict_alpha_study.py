@@ -20,7 +20,7 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
 from data.fetch_tracking_minutes import CACHE, DAILY, REVISION, fetch, fetch_daily
-from inverse_pair_discovery import (
+from experiments.discovery.inverse_pair_discovery import (
     ADV_LIMIT,
     BORROW,
     CAPITAL,
@@ -32,7 +32,7 @@ from inverse_pair_discovery import (
     holm,
     ols_slope,
 )
-from inverse_tracking_study import (
+from experiments.discovery.inverse_tracking_study import (
     Tape,
     chart,
     closing_slot,
@@ -514,8 +514,8 @@ def study(output):
     tapes = {s: Tape(s, calendar, SNAPSHOT, STOP, "2021-12-31") for s in symbols}
     files = [
         Path(__file__),
-        Path("inverse_tracking_study.py"),
-        Path("inverse_pair_discovery.py"),
+        Path("experiments/discovery/inverse_tracking_study.py"),
+        Path("experiments/discovery/inverse_pair_discovery.py"),
         Path("data/fetch_tracking_minutes.py"),
         *[CACHE / f"{s}.parquet" for s in symbols],
         *[SNAPSHOT / f"{s}.json" for s in symbols],

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from data.fetch_tracking_minutes import CACHE, DAILY, REVISION, SCREEN
-from inverse_pair_discovery import (
+from experiments.discovery.inverse_pair_discovery import (
     ADV_LIMIT,
     BORROW,
     CAPITAL,
@@ -551,7 +551,7 @@ def main(output):
         Path(__file__),
         Path("data/fetch_tracking_minutes.py"),
         SCREEN,
-        Path("inverse_pair_discovery.py"),
+        Path("experiments/discovery/inverse_pair_discovery.py"),
         *(CACHE / f"{s}.parquet" for s in available),
         *(DAILY / f"{s}.json" for s in symbols),
     ]

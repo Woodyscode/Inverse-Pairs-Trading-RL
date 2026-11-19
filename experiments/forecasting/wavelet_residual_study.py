@@ -13,8 +13,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from data.wavelet import donoho_johnstone_endpoint
-from strict_alpha_evidence import block_interval
-from strict_alpha_study import (
+from experiments.forecasting.strict_alpha_evidence import block_interval
+from experiments.forecasting.strict_alpha_study import (
     CAPITAL,
     DAILY_FEATURES,
     MINUTE_FEATURES,
@@ -250,8 +250,8 @@ def run(output):
     inputs = [
         Path(__file__),
         BASE / "manifest.json",
-        Path("strict_alpha_study.py"),
-        Path("strict_alpha_evidence.py"),
+        Path("experiments/forecasting/strict_alpha_study.py"),
+        Path("experiments/forecasting/strict_alpha_evidence.py"),
         Path("data/wavelet.py"),
         *BASE.glob("20*/qualification.csv"),
         *BASE.glob("20*/*/deployment.csv"),

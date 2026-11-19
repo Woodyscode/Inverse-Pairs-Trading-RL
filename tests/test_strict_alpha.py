@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from env.spread_control import SpreadControlEnv
-from inverse_tracking_study import enter
-from strict_alpha_study import FEE, feature_frame, marked_trade, opportunities
+from experiments.discovery.inverse_tracking_study import enter
+from experiments.forecasting.strict_alpha_study import FEE, feature_frame, marked_trade, opportunities
 
 
 def make_tapes(n):

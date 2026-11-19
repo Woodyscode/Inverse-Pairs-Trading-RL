@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from data.fetch_inverse_etfs import COHORT
-from inverse_pair_discovery import (
+from experiments.discovery.inverse_pair_discovery import (
     evaluate,
     pair_universe,
     prepare_fold,

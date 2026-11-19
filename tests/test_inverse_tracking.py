@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from inverse_tracking_study import (
+from experiments.discovery.inverse_tracking_study import (
     carry_years,
     effective_beta,
     enter,

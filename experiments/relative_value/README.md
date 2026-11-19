@@ -17,10 +17,10 @@ Training labels end by the training cutoff. Each validation or test forecast ear
 
 The table shows cumulative held-out net returns from July 2017 through December 2023, including cash periods. The one-session market-hedged comparison scored 1,485 paired forecasts, and the cointegrated comparison scored 214. None of the six differences in mean daily returns passed a two-sided 5% test using 20-lag HAC standard errors and Holm adjustment. The smallest adjusted p-value was 0.601. A separate full-daily-history control evaluates the opportunity cost of requiring minute coverage. Each minute comparison must use its matched daily control. ULE/UUP had zero qualifying mornings across its two original test windows, so the feed cannot measure this effect for the original inverse pair. [Paired tests](../../outputs/runs/rv_matched_minute/granularity.csv) · [All strategy results](../../outputs/runs/rv_matched_minute/summary.csv) · [Original inverse-pair coverage](../../outputs/runs/rv_matched_minute/inverse_minute_coverage.csv)
 
-Run the commands from the repository root using a new output directory. The restoration command verifies each cached input by SHA-256 and can download missing inputs. The daily provider updates its release in place, so retain the frozen cache for exact historical reproduction. The Parquet files are in [the local data cache](../../outputs/runs/cache/rv_sp500/).
+Run the commands from the repository root using a new output directory. The restoration command verifies each cached input by SHA-256 and can download missing inputs. The daily provider updates its release in place, so retain the frozen cache for exact historical reproduction. The Parquet files are in the local data cache at `outputs/runs/cache/rv_sp500/`.
 
 ```bash
 python -m data.fetch_relative_value
-python relative_value_horizons.py --minute --output outputs/runs/my_granularity_study
+python -m experiments.relative_value.relative_value_horizons --minute --output outputs/runs/my_granularity_study
 ```
 

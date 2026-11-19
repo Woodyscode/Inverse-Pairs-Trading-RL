@@ -15,8 +15,8 @@ from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
 from data.historical_panel import CACHE, FOLDS, load_market
-from inverse_pair_discovery import COHORT, RHO, holm, load_etfs, ols_slope, pair_data
-from strict_alpha_study import SEED, accuracy
+from experiments.discovery.inverse_pair_discovery import COHORT, RHO, holm, load_etfs, ols_slope, pair_data
+from experiments.forecasting.strict_alpha_study import SEED, accuracy
 
 FEATURES = [
     "residual",
@@ -199,7 +199,7 @@ def run(out):
     metrics.to_csv(out / "metrics.csv", index=False)
     inputs = [
         Path(__file__),
-        Path("strict_alpha_study.py"),
+        Path("experiments/forecasting/strict_alpha_study.py"),
         FOLDS,
         SCREEN,
         COHORT,

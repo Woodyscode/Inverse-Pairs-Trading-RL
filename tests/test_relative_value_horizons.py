@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from data.minute_features import paired_moments
-from relative_value_horizons import CAPITAL, FEE, basket_label, fit_predict, simulate
+from experiments.relative_value.relative_value_horizons import CAPITAL, FEE, basket_label, fit_predict, simulate
 
 
 def test_label_and_costs_follow_actual_hold():
