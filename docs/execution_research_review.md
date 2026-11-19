@@ -1,4 +1,6 @@
-# Execution research review
+# Execution costs in the inverse-return forecasting study
+
+This review covers the earlier forecast that traded deviations from a fitted inverse-return relationship. The subsequent gap-reopening study asks whether shorting the rising laggard adds value once the leader-only trade is sized to comparable factor exposure. [Matched short-leg attribution](../outputs/runs/inverse_short_leg_review/report.md)
 
 **Decision.** Keep the validation gate and its cash outcome. The strongest retrospective trade rule earned 1.89% on a $100,000 account. Its profitability depended on a small number of oil ETF trades and on the ability to short both legs. Neither walk-forward deployment had a forecast that qualified for trading. [Deployment decisions for 2025](../outputs/runs/strict_inverse_alpha_final/2025/validated_alpha.csv) · [Deployment decisions for 2026](../outputs/runs/strict_inverse_alpha_final/2026/validated_alpha.csv)
 

@@ -1,6 +1,10 @@
 # Inverse-pairs research history and reproduction notes
 
-This repository evaluates a daily inverse-pairs strategy on chronological walk-forward folds. The historical [codebase audit](outputs/audit/inverse_pairs_codebase_audit.md) describes an earlier implementation. Use the post-repair runs under [outputs/runs](outputs/runs/) for comparisons with the current simulator. Earlier checkpoints and performance reports used different accounting and features.
+The project began with a daily inverse-pairs PPO strategy and later added minute-level event studies. The original audit and repair report identify which timing, data and accounting changes separate the early backtests from the results used today. [Original audit](outputs/audit/inverse_pairs_codebase_audit.md) · [Repair report](outputs/audit/inverse_pairs_repair_report.md)
+
+## Gap reopening and the incremental short leg
+
+The gap-reopening study ranked strictly inverse ETFs by their trailing 20-session performance. It bought the falling leader and shorted the rising laggard when a large gap contracted. The first study compared that rule with a leader-only trade sized by trailing volatility and with a causal wavelet filter. The follow-up sized the leader to the pair's estimated factor exposure, reconciled each leg's PnL and reranked candidates after excluding SCO/USO. The leader-only benchmark earned more in both retrospective periods. The forward protocol specifies the next comparison and its scoring date. [Original event study](outputs/runs/inverse_gap_reopening/report.md) · [Matched short-leg study](outputs/runs/inverse_short_leg_review/report.md) · [Forward protocol](config/inverse_short_leg_forward.json)
 
 ## Strict inverse-pairs alpha and portfolio control
 
