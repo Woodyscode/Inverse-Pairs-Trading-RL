@@ -1,0 +1,25 @@
+{
+  "seed": 42,
+  "train_end": 1400,
+  "validation_end": 1652,
+  "steps": 50000,
+  "source_settings": {
+    "gross": 0.25,
+    "cost_rate": 0.0002,
+    "funding": 0.02,
+    "borrow": 0.005,
+    "cash": 0.0,
+    "adv_fraction": 0.01,
+    "lambda_risk": 1.0,
+    "lambda_turn": 5e-05,
+    "strict_volume": true,
+    "unwind_sessions": 20
+  },
+  "actions": [
+    "short",
+    "flat",
+    "long",
+    "hold",
+    "halve"
+  ]
+}

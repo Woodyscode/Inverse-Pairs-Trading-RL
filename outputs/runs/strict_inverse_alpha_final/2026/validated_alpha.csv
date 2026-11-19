@@ -1,0 +1,1 @@
+horizon,model,net,annual,sharpe,sortino,max_dd,calmar,turnover,trades,gross,execution,funding,borrow,mean_closing_gross,mean_closing_net,mean_session_gross,mean_session_net,hold_hours,median_fill,net_p,ci_low,ci_high,n,mse,mse_gain,ic,rank_ic,directional_accuracy,calibration_slope,actual_mean,predicted_mean,cost_clear,mse_p,net_holm,mse_holm

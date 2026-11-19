@@ -1,0 +1,21 @@
+{
+  "features": [
+    "residual",
+    "z",
+    "momentum",
+    "vol",
+    "ref_vol",
+    "relative_volume",
+    "interaction",
+    "beta"
+  ],
+  "seed": 42,
+  "source_sha256": {
+    "C:\\Users\\kwood\\Projects\\Inverse-Pairs-Trading-RL\\strict_daily_coverage.py": "a1c0ebc105807b81b53201aa789f4a5ad99a375bdf03af8aad8b80b5b8c5b36e",
+    "strict_alpha_study.py": "4d6d01496017bda5416701fba871ba0a6d93b48b30d52b2c6227bff89ee551e8",
+    "outputs\\runs\\residual_control_liquidity_50k\\folds.csv": "6a20bee5d0aef5442a7b1487ded3516daed7207a3808e7fe8f9c808658f3197e",
+    "outputs\\runs\\inverse_discovery_universe\\training_diagnostics.csv": "b12a5f28bb58ac42c191f7a28ff13b273739e76a1f27f5aa1c886c41af0d214c",
+    "config\\inverse_discovery.yaml": "94c0283b6f31bcf9b24fc8499fa29902f8db9b5e679dd3c2a54af3834acd85ba",
+    "outputs\\runs\\inverse_discovery_universe\\manifest.json": "6a32f4955ce75998e9205f8f7ba3852827c47fa018739c1ea291bced25f619d0"
+  }
+}
