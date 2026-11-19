@@ -1,0 +1,24 @@
+{
+  "wavelet": "db4",
+  "level": 1,
+  "mode": "symmetric",
+  "threshold": "MAD universal soft",
+  "window_sessions": 64,
+  "opening_minutes": 32,
+  "holding_sessions": 1,
+  "ridge_alpha": 100,
+  "pywavelets": "1.8.0",
+  "source_sha256": {
+    "C:\\Users\\kwood\\Projects\\Inverse-Pairs-Trading-RL\\wavelet_residual_study.py": "435dea2a0fa1ddaf292c1a54a09aa8a2eea390d800258bb7c6754cea7ea2dec7",
+    "outputs\\runs\\strict_inverse_alpha_final\\manifest.json": "ed191a627efdf50938ddeba8278af70bb391278bd0f4ecc98372545e445156df",
+    "strict_alpha_study.py": "53309d5235ae51b4d6457277f76fac133cf5a1b01e1a6b896b1492b109177f51",
+    "strict_alpha_evidence.py": "8d0745bf13c347a6fd772597f0c85ad6025746d05539f45e76d630a15cf5c351",
+    "data\\wavelet.py": "6d24b5818605ac2cd0879f64b59e169bfe0e268b2dc7287da67fc14606f68ca8",
+    "outputs\\runs\\strict_inverse_alpha_final\\2025\\qualification.csv": "81cad296ba6fe6145f0b793f8707d814b41076f45c95bbb38e1a3c541f10c63a",
+    "outputs\\runs\\strict_inverse_alpha_final\\2026\\qualification.csv": "4aeccfe02fbb72e35233fa4f9f37d861b43b4598895ed54c141ee4547e470671",
+    "outputs\\runs\\strict_inverse_alpha_final\\2025\\test\\deployment.csv": "4baa55c2d4f3cf41b961982a1c0aa55ce9b17bb546ff66ebf068867fe9b44adb",
+    "outputs\\runs\\strict_inverse_alpha_final\\2025\\validation\\deployment.csv": "334ee690fd552d848a5e039abe64d0df128bec9d7f253daf7072f18a4c9f4da8",
+    "outputs\\runs\\strict_inverse_alpha_final\\2026\\test\\deployment.csv": "9df7b7beb3f636631d6f04214c7389528318bd16d3441f444bcbd2ad5cff4409",
+    "outputs\\runs\\strict_inverse_alpha_final\\2026\\validation\\deployment.csv": "e527f8dc2cd038770442d93d3880a2049d7200c1566e5991679fa7f488fb38d4"
+  }
+}

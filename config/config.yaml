@@ -17,7 +17,8 @@ data:
   wavelet:
     enabled: true
     name: "db4"
-    level: 3
+    threshold_method: "donoho_johnstone"
+    level: 1
     window: 64
 
 

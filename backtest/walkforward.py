@@ -207,7 +207,8 @@ class WalkForwardEngine:
                 ret = (prices[A] - beta * prices[B]).diff() / gross.shift()
                 signal = causal_wavelet_denoise(
                     ret.fillna(0), wavelet.get("name", "db4"),
-                    wavelet.get("level", 3), wavelet.get("window", 64)
+                    wavelet.get("level", 3), wavelet.get("window", 64),
+                    threshold_method=wavelet.get("threshold_method", "legacy"),
                 )
                 mat_all = np.column_stack((mat_all, signal.to_numpy(dtype=np.float32)))
             raw[(A, B)] = mat_all[context_len:]
