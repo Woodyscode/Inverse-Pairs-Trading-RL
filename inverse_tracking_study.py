@@ -65,11 +65,17 @@ def chart(symbol, directory=DAILY):
 
 class Tape:
     def __init__(
-        self, symbol, calendar, directory=DAILY, stop="2026-01-01", fit_end=TRAIN_END
+        self,
+        symbol,
+        calendar,
+        directory=DAILY,
+        stop="2026-01-01",
+        fit_end=TRAIN_END,
+        minute_directory=CACHE,
     ):
         daily = chart(symbol, directory).reindex(calendar)
         minute = pd.read_parquet(
-            CACHE / f"{symbol}.parquet",
+            minute_directory / f"{symbol}.parquet",
             columns=["ts", "open", "close", "volume"],
             filters=[
                 ("ts", ">=", pd.Timestamp("2020-01-01", tz="UTC")),
