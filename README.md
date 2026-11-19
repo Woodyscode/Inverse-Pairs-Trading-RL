@@ -4,6 +4,8 @@ This research tests whether a departure from a historically negative return rela
 
 ## Results
 
+**Inverse-pair convergence events.** A separate experiment tests buying the falling prior leader and shorting the rising laggard after their indexed performance gap contracts. The gap reopened by the next session in 50.0% of 2025 events and 51.1% of 2026 events. Buying the leader alone on the same entries earned more in both periods. [Strategy definition, wavelet comparison and execution results](outputs/runs/inverse_gap_reopening/report.md)
+
 | Experiment | Held-out finding |
 |---|---|
 | Broad daily stock and ETF universe | Across 13 walk-forward windows and 471 stable pair-windows, no supervised model achieved a multiplicity-adjusted improvement in forecast MSE over zero. |

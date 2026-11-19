@@ -33,3 +33,5 @@ outputs/test_tmp/
 outputs/runs/audit_ppo_pilot/
 outputs/runs/inverse_tracking_pilot/
 outputs/runs/strict_alpha_control/
+outputs/runs/inverse_wavelet_one_session/
+outputs/runs/inverse_convergence_reopening/

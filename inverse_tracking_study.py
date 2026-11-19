@@ -259,14 +259,21 @@ def carry_years(calendar, d, m, e, n, entry_values, official_marks):
 
 
 def enter(tapes, pair, d, slot, hedge):
-    w = signed_weights(hedge)
+    return enter_weighted(tapes, pair, d, slot, signed_weights(hedge))
+
+
+def enter_weighted(tapes, pair, d, slot, w):
+    w = np.asarray(w, dtype=float)
+    if w.shape != (2,) or not np.isclose(abs(w).sum(), 1.0):
+        raise ValueError("Pair weights require unit gross")
+    active = w != 0
     a, b = (tapes[s] for s in pair)
     for m in range(slot, slot + 5):
         px = np.array([a.price[d, m], b.price[d, m]])
         if not np.isfinite(px).all():
             continue
         budgets = ADV_LIMIT * np.minimum([a.dv[d, m], b.dv[d, m]], [a.adv[d], b.adv[d]])
-        size = min(CAPITAL * TARGET, np.min(budgets / w))
+        size = min(CAPITAL * TARGET, np.min(budgets[active] / abs(w[active])))
         if size > 0:
             return m, size, w, px
 
@@ -289,13 +296,15 @@ def exit_trade(tapes, pair, calendar, d, entry, side, beta, e, slot, end, fills=
             marks = np.array([a.price[day, n], b.price[day, n]])
             if not np.isfinite(marks).all():
                 continue
-            exit_values = size * w * marks / px
+            exit_values = size * abs(w) * marks / px
             fraction = min(
                 left,
                 ADV_LIMIT
                 * np.min(
-                    np.minimum([a.dv[day, n], b.dv[day, n]], [a.adv[day], b.adv[day]])
-                    / exit_values
+                    np.minimum([a.dv[day, n], b.dv[day, n]], [a.adv[day], b.adv[day]])[
+                        w != 0
+                    ]
+                    / exit_values[w != 0]
                 ),
             )
             if fraction <= 0:
@@ -321,10 +330,13 @@ def exit_trade(tapes, pair, calendar, d, entry, side, beta, e, slot, end, fills=
             result["execution"] += fraction * FEE * exit_values.sum()
             result["funding"] += fraction * f
             result["borrow"] += fraction * borr
-            expected = expected_growth(b, beta, d, m, day, n)
-            result["reset_excess"] += (
-                fraction * side * size * w[0] * (1 + gains[0] - expected)
-            )
+            if beta is None:
+                result["reset_excess"] = np.nan
+            else:
+                expected = expected_growth(b, beta, d, m, day, n)
+                result["reset_excess"] += (
+                    fraction * side * size * w[0] * (1 + gains[0] - expected)
+                )
             left -= fraction
             if left < 1e-10:
                 result["net"] = (
