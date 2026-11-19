@@ -4,6 +4,8 @@ This research tests whether a departure from a historically negative return rela
 
 ## Results
 
+**Does the short laggard earn its place?** In the 2026 replay, buying the falling prior leader and shorting the rising laggard earned 7.08%. Buying only the leader on those entries, sized to match estimated factor exposure, earned 7.44%. The short leg contributed $3,306 net, yet modeled factor exposure accounted for the entire two-leg profit. The pair also trailed the leader in 2025. The prospective comparison was registered for November 19 through December 31, 2026. [Short-leg attribution, execution evidence and forward protocol](outputs/runs/inverse_short_leg_review/report.md)
+
 **Inverse-pair convergence events.** A separate experiment tests buying the falling prior leader and shorting the rising laggard after their indexed performance gap contracts. The gap reopened by the next session in 50.0% of 2025 events and 51.1% of 2026 events. Buying the leader alone on the same entries earned more in both periods. [Strategy definition, wavelet comparison and execution results](outputs/runs/inverse_gap_reopening/report.md)
 
 | Experiment | Held-out finding |
