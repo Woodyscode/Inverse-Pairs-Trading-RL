@@ -16,7 +16,7 @@ except Exception:
 # ============================================================
 # FEATURE COUNT (≈146 FINAL)
 # ============================================================
-N_ADVANCED_PAIR_FEATURES = 146
+N_ADVANCED_PAIR_FEATURES = 151
 _EPS = 1e-9
 
 
@@ -88,45 +88,18 @@ def compute_kalman_hedge_ratio(a, b, state):
     if KalmanFilter is None or len(a) < 10:
         return 0,0,0,state
 
-    # Make 2D numeric arrays
-    y = ensure_1d(a)
-    x = ensure_1d(b)
-
-    # Constant observation matrix: y = beta*x + alpha
-    H = np.column_stack([x, np.ones_like(x)])  # design matrix for computing resid
-    obs_matrix = np.array([[1, 0]])            # Kalman observation model
-    
-    # Kalman setup
-    kf = KalmanFilter(
-        transition_matrices=np.eye(2),
-        observation_matrices=obs_matrix,
+    y, x = ensure_1d(a), ensure_1d(b)
+    mean, cov = (np.zeros(2), np.eye(2)) if state is None else state
+    # Update exactly once for the newly observed bar.
+    observation = np.array([[x[-1], 1.0]])
+    mean, cov = KalmanFilter(n_dim_state=2, n_dim_obs=1).filter_update(
+        mean, cov, observation=y[-1:], observation_matrix=observation,
         transition_covariance=np.eye(2) * 0.001,
-        observation_covariance=1.0,
     )
-
-    # Initial state
-    if state is None:
-        m = np.zeros(2)
-        P = np.eye(2)
-    else:
-        m, P = state
-
-    try:
-        means, covs = kf.filter(y, initial_state_mean=m, initial_state_covariance=P)
-    except:
-        return 0,0,0,state
-
-    # Last state gives hedge ratio + intercept
-    beta  = float(means[-1][0])
-    alpha = float(means[-1][1])
-
-    # Residual calculation
-    fitted = beta * x + alpha
-    resid = float(y[-1] - fitted[-1])
-    resid_z = float((resid - (y - fitted).mean()) / ((y - fitted).std() + _EPS))
-
-    return beta, resid, resid_z, (means[-1], covs[-1])
-
+    beta, intercept = np.asarray(mean)
+    residuals = y - (beta * x + intercept)
+    z = (residuals[-1] - residuals.mean()) / (residuals.std() + _EPS)
+    return float(beta), float(residuals[-1]), float(z), (mean, cov)
 
 
 def compute_ols_beta_resid(a,b,w):
@@ -197,9 +170,11 @@ def compute_all_advanced_features(
     base_window=30,
     min_periods=60,
     price_type="Adj Close",
+    hedge_ratio=1.0,
+    intercept=0.0,
 ):
     """
-    Returns: features (len=146), new Kalman state, metrics dict
+    Returns: features, new Kalman state, metrics dict
     """
 
     # Early warm-up. This is deliberately configurable so short validation
@@ -229,7 +204,7 @@ def compute_all_advanced_features(
     volA, volB     = cut("Volume")
 
     # Spread + velocity terms
-    spread = adjA - adjB
+    spread = adjA - hedge_ratio * adjB - intercept
     ds = spread.diff()
     spread_now = float(spread.iloc[-1])
     spread_vel = float(ds.iloc[-1])
@@ -253,7 +228,7 @@ def compute_all_advanced_features(
         bb_pos=bb_width=bb_in=0.0
 
     # Returns
-    rA=_pct_change(adjA); rB=_pct_change(adjB); rS=_pct_change(spread)
+    rA=_pct_change(adjA); rB=_pct_change(adjB); rS=(spread.diff() / (adjA + abs(hedge_ratio) * adjB).shift(1)).fillna(0)
 
     windows=[5,10,20,30,60,90,120,180,252]
 
@@ -301,7 +276,7 @@ def compute_all_advanced_features(
     gkB=garman_klass_vol(openB,highB,lowB,closeB)
     effA=effective_spread(highA,lowA,closeA)
     effB=effective_spread(highB,lowB,closeB)
-    sigA=vol_signature(closeA); sigB=vol_signature(closeB)
+    sigA=vol_signature(adjA); sigB=vol_signature(adjB)
 
     # Liquidity (8×2 = 16)
     vol_feats=[]
@@ -358,15 +333,10 @@ def compute_all_advanced_features(
     def _mfi(h,l,c,v,w=14):
         if len(c)<w+1: return 0
         tp=(h+l+c)/3; mf=tp*v
-        pos=[];neg=[]
-        for i in range(1,len(tp)):
-            if tp.iloc[i]>tp.iloc[i-1]:
-                pos.append(mf.iloc[i]); neg.append(0)
-            else:
-                neg.append(mf.iloc[i]); pos.append(0)
-        pos=pd.Series(pos); neg=pd.Series(neg)
-        mr = pos.rolling(w).sum()/(neg.rolling(w).sum()+_EPS)
-        return float(100 - 100/(1+mr.iloc[-1]))
+        change=tp.diff().iloc[-w:]
+        flow=mf.iloc[-w:]
+        mr=flow.where(change > 0, 0).sum() / (flow.where(change < 0, 0).sum()+_EPS)
+        return float(100 - 100/(1+mr))
 
     mfiA=_mfi(highA,lowA,closeA,volA)
 
@@ -424,12 +394,8 @@ def compute_all_advanced_features(
     feats += [skew,kurt,dd,semi,var95,c95,var99,c99]
 
 
-    # EXACT LENGTH GUARANTEE
-    if len(feats) < N_ADVANCED_PAIR_FEATURES:
-        feats += [0]*(N_ADVANCED_PAIR_FEATURES - len(feats))
-    else:
-        feats = feats[:N_ADVANCED_PAIR_FEATURES]
-
+    if len(feats) != N_ADVANCED_PAIR_FEATURES:
+        raise ValueError(f"Expected {N_ADVANCED_PAIR_FEATURES} features, got {len(feats)}")
     feats = np.nan_to_num(np.asarray(feats, dtype=np.float32), nan=0.0, posinf=0.0, neginf=0.0)
 
 

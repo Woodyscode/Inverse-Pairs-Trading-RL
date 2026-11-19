@@ -6,7 +6,6 @@ import os
 from data.loaders import DataLoader
 from data.loaders import save_data_quality_report
 from data.returns import compute_log_returns
-from data.wavelet import causal_denoise_dataframe
 
 from utils.logger import get_logger
 logger = get_logger("Preprocessing")
@@ -93,11 +92,10 @@ def prepare_data(config):
     FINAL VERSION:
     - Loads OHLCV using DataLoader (NO preprocessing performed there)
     - Computes log returns
-    - Optionally applies causal wavelet denoising
     - Aligns OHLCV + cleaned returns
     - Returns:
         ohlcv: dict of DataFrames
-        cleaned_returns: fully denoised returns
+        cleaned_returns: aligned log returns
         idx: aligned DatetimeIndex
 
     No pair selection.
@@ -107,6 +105,9 @@ def prepare_data(config):
     logger.info("\n[DATA] ========= PREPARING FULL DATA PIPELINE =========")
 
     data_cfg = config["data"]
+
+    if data_cfg.get("require_full_coverage", False):
+        raise ValueError("Walk-forward selection requires fold-local coverage. Set require_full_coverage to false.")
 
     ohlcv = DataLoader.load_prices(
         assets_path=data_cfg["assets_path"],
@@ -118,7 +119,7 @@ def prepare_data(config):
         cache_path=data_cfg.get("cache_path"),
         max_ffill_gap=data_cfg.get("max_ffill_gap"),
         min_retained_symbols=data_cfg.get("min_retained_symbols"),
-        require_full_coverage=data_cfg.get("require_full_coverage", False),
+        preserve_calendar=True,
         coverage_tolerance_days=data_cfg.get("coverage_tolerance_days", 0),
         download_threads=data_cfg.get("download_threads", True),
         download_chunk_size=data_cfg.get("download_chunk_size"),
@@ -143,18 +144,9 @@ def prepare_data(config):
     # ----------------------------------------------------------
     # 2) Compute log returns
     # ----------------------------------------------------------
-    log_ret = compute_log_returns(close)
+    log_ret = compute_log_returns(close, keep_calendar=True)
 
     cleaned_returns = log_ret
-
-    wavelet_cfg = data_cfg.get("wavelet", {})
-    if wavelet_cfg.get("enabled", False):
-        cleaned_returns = causal_denoise_dataframe(
-            cleaned_returns,
-            wavelet=wavelet_cfg.get("name", "db4"),
-            level=wavelet_cfg.get("level", 3),
-            window=wavelet_cfg.get("window", 64),
-        )
 
     # ----------------------------------------------------------
     # 5) Align OHLCV with cleaned returns

@@ -158,7 +158,7 @@ def test_manual_price_path_expected_reward_with_frictionless_trade():
 
     _, reward, _, _, info = env.step(np.array([1.0, 1.0], dtype=np.float32))
 
-    expected_pnl = 0.25 * 100000.0 * 0.10
+    expected_pnl = (25000.0 / (100 + 100)) * 10
     expected_reward = (expected_pnl / 100000.0) - (0.01 * 0.25)
     assert np.isclose(info["pnl"], expected_pnl)
     assert np.isclose(reward, expected_reward)

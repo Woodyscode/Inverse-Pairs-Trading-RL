@@ -1,155 +1,65 @@
-import numpy as np
 from itertools import combinations
+
+import numpy as np
 from statsmodels.tsa.stattools import coint
-from utils.logger import get_logger
+from statsmodels.stats.multitest import multipletests
 
 
-def _cointegration_pvalue(prices_df, a, b, min_obs):
-    aligned = prices_df[[a, b]].dropna()
-    if len(aligned) < min_obs:
-        return None
-    _, pval, _ = coint(aligned[a], aligned[b])
-    return float(pval)
+def select_pair_models(returns_df, prices_df, config):
+    """Select and fit price-level A = intercept + beta * B on one training fold."""
+    cfg = config["pairs"]
+    min_obs = cfg["min_observations"]
+    corr = returns_df.corr(min_periods=min_obs)
+    vol = returns_df.std() * np.sqrt(252)
+    candidates = {"traditional": [], "inverse": []}
+    for a, b in combinations(sorted(returns_df.columns), 2):
+        rho = corr.at[a, b]
+        if not np.isfinite(rho) or rho == 0 or abs(rho) < cfg["correlation_threshold"]:
+            continue
+        kind = "traditional" if rho > 0 else "inverse"
+        if not cfg["allow_positive" if rho > 0 else "allow_negative"]:
+            continue
+        lower = cfg.get(f"{kind}_min_annual_vol")
+        upper = cfg.get(f"{kind}_max_annual_vol")
+        if lower is not None and min(vol[a], vol[b]) < lower:
+            continue
+        if upper is not None and max(vol[a], vol[b]) > upper:
+            continue
+        aligned = prices_df[[a, b]].dropna()
+        if len(aligned) < min_obs or aligned[b].nunique() < 2:
+            continue
+        pvalue = None
+        if cfg["use_cointegration"]:
+            try:
+                pvalue = float(coint(aligned[a], aligned[b])[1])
+            except (ValueError, np.linalg.LinAlgError):
+                pvalue = 1.0
+            if not np.isfinite(pvalue):
+                pvalue = 1.0
+        beta, intercept = np.polyfit(aligned[b], aligned[a], 1)
+        candidates[kind].append({
+            "pair": (a, b), "type": kind, "correlation": float(rho),
+            "observations": len(aligned), "coint_pvalue": pvalue,
+            "hedge_ratio": float(beta), "intercept": float(intercept),
+        })
+    if cfg["use_cointegration"]:
+        tested = candidates["traditional"] + candidates["inverse"]
+        method = cfg.get("multiple_testing", "none")
+        raw = [m["coint_pvalue"] for m in tested]
+        adjusted = multipletests(raw, method=method)[1] if tested and method != "none" else raw
+        for model, pvalue in zip(tested, adjusted):
+            model["screened_tests"] = len(tested)
+            model["adjusted_pvalue"] = float(pvalue)
+        for kind, rows in candidates.items():
+            candidates[kind] = [m for m in rows if m["adjusted_pvalue"] < cfg["cointegration_p_value"]]
+    selected = []
+    for kind, rows in candidates.items():
+        rows.sort(key=lambda row: (-abs(row["correlation"]), row["pair"]))
+        selected.extend(rows[:cfg.get(f"max_{kind}_pairs")])
+    return selected
 
 
 def find_strong_pairs(returns_df, prices_df, config):
-    """
-    FINAL VERSION:
-    
-    - Correlation on RETURNS
-    - Volatility on RETURNS
-    - Cointegration on PRICES (correct for pairs trading)
-    """
-
-    log = get_logger("PairSelector")
-
-    pair_cfg = config["pairs"]
-
-    # Shared config
-    corr_thresh     = pair_cfg["correlation_threshold"]
-    allow_pos       = pair_cfg["allow_positive"]
-    allow_neg       = pair_cfg["allow_negative"]
-
-    require_coint   = pair_cfg["use_cointegration"]
-    p_value_thresh  = pair_cfg["cointegration_p_value"]
-    min_obs         = pair_cfg["min_observations"]
-
-    # Traditional config
-    trad_min_vol    = pair_cfg.get("traditional_min_annual_vol", None)
-    trad_max_vol    = pair_cfg.get("traditional_max_annual_vol", None)
-    max_trad_pairs  = pair_cfg.get("max_traditional_pairs", None)
-
-    # Inverse config
-    inv_min_vol     = pair_cfg.get("inverse_min_annual_vol", None)
-    inv_max_vol     = pair_cfg.get("inverse_max_annual_vol", None)
-    max_inv_pairs   = pair_cfg.get("max_inverse_pairs", None)
-
-
-    # ============================================================
-    # 1) Compute correlation + volatility from RETURNS
-    # ============================================================
-    log.info("[PAIRS] Computing correlation (returns)...")
-    corr = returns_df.corr()
-
-    log.info("[PAIRS] Computing annualized vol (returns)...")
-    vol = returns_df.std() * np.sqrt(252)
-
-    cols = returns_df.columns
-    n = len(cols)
-
-    log.info(f"[PAIRS] Evaluating {n} assets ({n * (n - 1) // 2} pairs)...")
-
-    traditional_pairs = []
-    inverse_pairs = []
-
-
-    # ============================================================
-    # 2) Pair loop
-    # ============================================================
-    for a, b in combinations(cols, 2):
-
-        rho = corr.loc[a, b]
-        if np.isnan(rho):
-            continue
-
-        pair_returns = returns_df[[a, b]].dropna()
-        if len(pair_returns) < min_obs:
-            continue
-
-        # Must exceed correlation threshold
-        if abs(rho) < corr_thresh:
-            continue
-
-        # =======================================================
-        # POSITIVE CORRELATION (Traditional)
-        # =======================================================
-        if rho > 0 and allow_pos:
-
-            # Volatility screen
-            if trad_min_vol is not None:
-                if vol[a] < trad_min_vol or vol[b] < trad_min_vol:
-                    continue
-
-            if trad_max_vol is not None:
-                if vol[a] > trad_max_vol or vol[b] > trad_max_vol:
-                    continue
-
-            # Correct cointegration: on PRICES
-            if require_coint:
-                try:
-                    pval = _cointegration_pvalue(prices_df, a, b, min_obs)
-                except Exception:
-                    continue
-
-                if pval is None or pval >= p_value_thresh:
-                    continue
-
-            traditional_pairs.append((a, b))
-
-
-        # =======================================================
-        # NEGATIVE CORRELATION (Inverse Pairs Trading)
-        # =======================================================
-        elif rho < 0 and allow_neg:
-
-            if rho > -abs(corr_thresh):
-                continue
-
-            # Volatility screen (optional)
-            if inv_min_vol is not None:
-                if vol[a] < inv_min_vol or vol[b] < inv_min_vol:
-                    continue
-            if inv_max_vol is not None:
-                if vol[a] > inv_max_vol or vol[b] > inv_max_vol:
-                    continue
-
-            # Cointegration on PRICES
-            if require_coint:
-                try:
-                    pval = _cointegration_pvalue(prices_df, a, b, min_obs)
-                except Exception:
-                    continue
-
-                if pval is None or pval >= p_value_thresh:
-                    continue
-
-            inverse_pairs.append((a, b))
-
-
-    # ============================================================
-    # 3) Apply max limits
-    # ============================================================
-    if max_trad_pairs is not None:
-        traditional_pairs = traditional_pairs[:max_trad_pairs]
-
-    if max_inv_pairs is not None:
-        inverse_pairs = inverse_pairs[:max_inv_pairs]
-
-
-    # ============================================================
-    # Logging
-    # ============================================================
-    log.info(f"[PAIRS] Traditional pairs: {len(traditional_pairs)}")
-    log.info(f"[PAIRS] Inverse pairs:     {len(inverse_pairs)}")
-
-    return traditional_pairs, inverse_pairs
+    selected = select_pair_models(returns_df, prices_df, config)
+    return tuple([m["pair"] for m in selected if m["type"] == kind]
+                 for kind in ("traditional", "inverse"))

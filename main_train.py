@@ -8,6 +8,11 @@ import json
 import argparse
 import pandas as pd
 import math
+import hashlib
+import platform
+import subprocess
+from importlib.metadata import distributions
+from pathlib import Path
 
 from setup_paths import *
 
@@ -35,7 +40,9 @@ def build_env(
     price_index,
     features,
     metrics,
-    feature_dims
+    feature_dims,
+    pair_models=None,
+    start_step=None,
 ):
     """
     Unified factory for WalkForwardEngine (FULL SIGNATURE).
@@ -55,6 +62,8 @@ def build_env(
         features=features,
         metrics=metrics,
         feature_dims=feature_dims,
+        pair_models=pair_models,
+        start_step=start_step,
     )
 
 
@@ -107,6 +116,32 @@ def save_run_outputs(results, config):
     with open(os.path.join(run_dir, "selected_pairs.json"), "w") as f:
         json.dump(_json_safe(results.get("selected_pairs", [])), f, indent=2, default=_json_default)
 
+    root = Path(run_dir)
+    def git(*args):
+        proc = subprocess.run(["git", *args], capture_output=True, cwd=Path(__file__).parent)
+        return proc.stdout.decode("utf-8", errors="replace").strip() if proc.returncode == 0 else None
+
+    sources = hashlib.sha256()
+    for path in sorted(Path(__file__).parent.rglob("*.py")):
+        if any(part.startswith(".") or part in {"venv", "outputs"} for part in path.relative_to(Path(__file__).parent).parts):
+            continue
+        sources.update(path.relative_to(Path(__file__).parent).as_posix().encode())
+        sources.update(path.read_bytes())
+    manifest = {
+        "seed": config["system"]["seed"], "git_commit": git("rev-parse", "HEAD"),
+        "source_sha256": sources.hexdigest(), "python": platform.python_version(),
+        "dependencies": {d.metadata["Name"]: d.version for d in distributions() if d.metadata["Name"]},
+        "data": DataLoader.last_manifest, "validation_protocol": results["validation_protocol"],
+        "primary_strategy": "zscore_mean_reversion" if config.get("validation", {}).get("benchmark_only") else "ppo",
+    }
+    (root / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf8")
+    (root / "baseline_metrics.json").write_text(
+        json.dumps(_json_safe(results["baseline_global_metrics"]), indent=2), encoding="utf8")
+    if results["baseline_equity_curves"]:
+        pd.DataFrame(results["baseline_equity_curves"]).to_csv(root / "baseline_equity_curves.csv")
+    for name, frame in {"strategy": results["frictions"], **results["baseline_frictions"]}.items():
+        frame.to_csv(root / f"{name}_frictions.csv", index=False)
+
     serializable_config = {
         key: value for key, value in config.items()
         if key not in {"price_index", "benchmark_curve"}
@@ -124,14 +159,16 @@ def load_benchmark(price_index, config, ohlcv=None):
     price_type = config.get("data", {}).get("price_type", "Adj Close")
 
     if ohlcv is not None and price_type in ohlcv and "SPY" in ohlcv[price_type].columns:
-        curve = ohlcv[price_type]["SPY"].reindex(price_index).ffill()
+        curve = ohlcv[price_type]["SPY"].reindex(price_index)
+        if curve.isna().any() or (curve <= 0).any():
+            raise ValueError("SPY benchmark has a missing or invalid close")
         curve = curve / curve.iloc[0]
         curve.name = "SPY"
         logger.info("[MainTrain] SPY benchmark loaded from prepared dataset.")
         return curve
 
     start = price_index[0].strftime("%Y-%m-%d")
-    end   = price_index[-1].strftime("%Y-%m-%d")
+    end = (price_index[-1] + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
     spy = DataLoader.load_single_price(
         ticker="SPY",
@@ -140,10 +177,12 @@ def load_benchmark(price_index, config, ohlcv=None):
         price_type=price_type,
     )
 
-    if "SPY" not in spy.columns:
+    if "SPY" not in spy.columns or spy.empty:
         raise RuntimeError("[MainTrain] SPY fetch failed.")
 
-    curve = spy["SPY"].reindex(price_index).ffill()
+    curve = spy["SPY"].reindex(price_index)
+    if curve.isna().any() or (curve <= 0).any():
+        raise ValueError("SPY benchmark has a missing or invalid close")
     curve = curve / curve.iloc[0]
     curve.name = "SPY"
 
@@ -166,7 +205,7 @@ def log_system_usage():
 # ======================================================================
 #                               MAIN
 # ======================================================================
-def main(config_path="config/config.yaml", smoke=False):
+def main(config_path="config/config.yaml", smoke=False, benchmark_only=False):
 
     # ----------------------------------------------------------
     # Global reproducibility
@@ -187,8 +226,12 @@ def main(config_path="config/config.yaml", smoke=False):
     if smoke:
         config["smoke"] = True
 
+    if benchmark_only:
+        config.setdefault("validation", {})["benchmark_only"] = True
+        config["output"]["run_dir"] = str(Path(config["output"]["run_dir"]) / "benchmark_only")
     seed = config.get("system", {}).get("seed", 42)
     torch.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
     np.random.seed(seed)
     random.seed(seed)
 
@@ -249,6 +292,7 @@ def main(config_path="config/config.yaml", smoke=False):
 def parse_args():
     parser = argparse.ArgumentParser(description="Run inverse pairs training/backtest.")
     parser.add_argument("--config", default="config/config.yaml")
+    parser.add_argument("--benchmark-only", action="store_true", help="Evaluate the z-score policy without training PPO.")
     parser.add_argument("--smoke", action="store_true", help="Run local deterministic smoke pipeline.")
     parser.add_argument(
         "--daily-validation",
@@ -265,4 +309,4 @@ if __name__ == "__main__":
         run_daily_validation()
     else:
         config_path = "config/smoke_config.yaml" if args.smoke else args.config
-        main(config_path=config_path, smoke=args.smoke)
+        main(config_path=config_path, smoke=args.smoke, benchmark_only=args.benchmark_only)

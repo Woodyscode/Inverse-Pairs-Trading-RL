@@ -8,6 +8,7 @@ data:
   assets_path: "config/pairs.yaml"
   price_type: "Adj Close"
   source: "yfinance"
+  cache_path: "outputs/runs/cache/inverse_pairs_2014_2024.csv"
   min_history: 500
   max_ffill_gap: 5
   resample_frequency: "1D"
@@ -31,6 +32,7 @@ pairs:
 
   use_cointegration: true
   cointegration_p_value: 0.05
+  multiple_testing: holm
 
   min_observations: 300
 
@@ -61,8 +63,9 @@ env:
   financing_rate_annual: 0.02
   cash_rate_annual: 0.00
 
+  signal_lag_bars: 1
   liquidity:
-    enabled: false
+    enabled: true
     adv_window: 20
     max_trade_pct_adv: 0.01
 
@@ -103,7 +106,7 @@ walkforward:
   enabled: true
 
   train_years: 3
-  validation_months: 0
+  validation_months: 6
   test_months: 6
 
   min_train_size: 500
@@ -114,7 +117,6 @@ walkforward:
   retrain_kelly_each_window: false
 
   mode: "rolling"
-  feature_context_days: 252
 
 validation:
   run_baselines: true
@@ -152,7 +154,8 @@ reward:
 # ======================================================================
 training:
   log_interval: 500
-  save_dir: "models/ppo/"
+  save_dir: "outputs/runs/full/models/ppo"
+  progress_bar: false
 
 
 # ======================================================================
@@ -172,19 +175,19 @@ evaluation:
 #                            PLOTTING SETTINGS
 # ======================================================================
 plotting:
-  equity_curve: true
-  compare_spy: true
-  final_allocation: true
-  return_distribution: true
-  monthly_heatmap: true
-  drawdown_curve: true
-  ulcer_index_curve: true
-  cdar_plot: true
-  rolling_sharpe: true
-  rolling_sortino: true
-  rolling_vol: true
-  trade_pnl_distribution: true
-  gain_to_pain: true
+  equity_curve: false
+  compare_spy: false
+  final_allocation: false
+  return_distribution: false
+  monthly_heatmap: false
+  drawdown_curve: false
+  ulcer_index_curve: false
+  cdar_plot: false
+  rolling_sharpe: false
+  rolling_sortino: false
+  rolling_vol: false
+  trade_pnl_distribution: false
+  gain_to_pain: false
 
 
 # ======================================================================

@@ -10,6 +10,9 @@ import yaml
 from statsmodels.tsa.stattools import adfuller, coint
 
 from data.loaders import DataLoader
+from backtest.backtester import Backtester
+from backtest.baselines import CashPolicy, RandomPolicy, ZScoreMeanReversionPolicy
+from env.inverse_pairs_env import InversePairsTradingEnv
 
 
 OUTPUT_DIR = Path("outputs/research_pivot")
@@ -134,11 +137,12 @@ def _generate_windows(index, cfg):
     mode = wf.get("mode", "rolling")
 
     windows = []
-    for start in range(train_days, len(index) - val_days - test_days + 1, step_days):
+    first = max(train_days, cfg["data"].get("min_history", 0))
+    for start in range(first, len(index) - val_days - wf["min_test_size"] + 1, step_days):
         train_start = 0 if mode == "expanding" else start - train_days
         train_end = start
         val_end = train_end + val_days
-        test_end = val_end + test_days
+        test_end = min(len(index), val_end + test_days)
         windows.append(
             {
                 "window": len(windows) + 1,
@@ -224,8 +228,8 @@ def _rank_candidates(returns, prices, variant, allowed_pairs=None):
 
 def _fit_residual_model(train_prices, pair):
     a, b = pair
-    x = np.log(train_prices[b].replace(0, np.nan)).dropna()
-    y = np.log(train_prices[a].replace(0, np.nan)).dropna()
+    x = train_prices[b]
+    y = train_prices[a]
     aligned = pd.concat([y, x], axis=1).dropna()
     aligned.columns = [a, b]
     if len(aligned) < 30:
@@ -236,7 +240,7 @@ def _fit_residual_model(train_prices, pair):
 
 def _residual(prices, pair, alpha, beta):
     a, b = pair
-    return np.log(prices[a].replace(0, np.nan)) - (alpha + beta * np.log(prices[b].replace(0, np.nan)))
+    return prices[a] - (alpha + beta * prices[b])
 
 
 def _half_life(spread):
@@ -300,7 +304,7 @@ def _profit_factor(pnls):
 def _metrics(equity, pnls, frictions):
     equity = pd.Series(equity).dropna()
     returns = equity.pct_change().dropna()
-    years = len(equity) / 252
+    years = (equity.index[-1] - equity.index[0]).days / 365.25 if len(equity) > 1 else 0
     total_return = float(equity.iloc[-1] / equity.iloc[0] - 1) if len(equity) > 1 else 0.0
     cagr = float((equity.iloc[-1] / equity.iloc[0]) ** (1 / years) - 1) if years > 0 and equity.iloc[0] > 0 else 0.0
     sharpe = float((returns.mean() / (returns.std() + 1e-12)) * np.sqrt(252)) if len(returns) > 1 else 0.0
@@ -313,8 +317,8 @@ def _metrics(equity, pnls, frictions):
         "cagr": cagr,
         "sharpe": sharpe,
         "max_drawdown": max_dd,
-        "win_rate": float((pnls_arr > 0).mean()) if len(pnls_arr) else 0.0,
-        "profit_factor": _profit_factor(pnls_arr),
+        "bar_win_rate": float((pnls_arr > 0).mean()) if len(pnls_arr) else 0.0,
+        "bar_profit_factor": _profit_factor(pnls_arr),
         "turnover": float(frictions["turnover"].sum()) if len(frictions) else 0.0,
         "transaction_costs": float(frictions["transaction_costs"].sum()) if len(frictions) else 0.0,
         "carry_costs": float(frictions["carry_costs"].sum()) if len(frictions) else 0.0,
@@ -324,105 +328,67 @@ def _metrics(equity, pnls, frictions):
     }
 
 
-def _scale_positions(targets, max_total_exposure):
-    gross = sum(abs(x) for x in targets.values())
-    if gross > max_total_exposure and gross > 0:
-        scale = max_total_exposure / gross
-        return {k: v * scale for k, v in targets.items()}
-    return targets
+def _training_prices(panels, w, cfg):
+    start, end = w["train_start_idx"], w["train_end_idx"]
+    prices = panels[cfg["data"]["price_type"]].iloc[start:end]
+    eligible = prices.gt(0).all()
+    for frame in panels.values():
+        eligible &= frame.iloc[:end].count() >= cfg["data"]["min_history"]
+        eligible &= frame.iloc[start:end].notna().all()
+    return prices.loc[:, eligible]
 
 
-def _carry_costs(portfolio, positions, env_cfg):
-    gross = sum(abs(v) * portfolio for v in positions.values())
-    short_notional = gross / 2.0
-    borrow = short_notional * float(env_cfg.get("borrow_fee_annual", 0.0)) / 252.0
-    financing = gross * float(env_cfg.get("financing_rate_annual", 0.0)) / 252.0
-    cash = max(portfolio * (1.0 - sum(abs(v) for v in positions.values())), 0.0)
-    cash_credit = cash * float(env_cfg.get("cash_rate_annual", 0.0)) / 252.0
-    return borrow + financing - cash_credit, borrow, financing, cash_credit
+def _missing_evaluation_price(prices, pairs, window, cfg):
+    lag = cfg["env"].get("signal_lag_bars", 1)
+    start = window["validation_end_idx"]
+    left = max(0, start - max(ZSCORE_LOOKBACK + lag, cfg["env"]["liquidity"]["adv_window"]))
+    selected = sorted({asset for pair in pairs for asset in pair})
+    sample = prices[selected].iloc[left:window["test_end_idx"]]
+    missing = ~np.isfinite(sample) | (sample <= 0)
+    if missing.any().any():
+        row, col = np.argwhere(missing.to_numpy())[0]
+        return f"Missing price for {sample.columns[col]} on {sample.index[row].date()} in window {window['window']}"
+    return None
 
 
-def _backtest_policy(policy, test_prices, pairs, models, cfg, seed=42):
-    env_cfg = cfg["env"]
-    window_size = int(env_cfg["window_size"])
-    max_pos = float(env_cfg["max_position"])
-    max_total = float(env_cfg["max_total_exposure"])
-    tc = float(env_cfg["transaction_cost"]) + float(env_cfg["slippage_cost"])
+def _backtest_policy(policy, panels, w, pairs, models, cfg, capital, seed=42):
+    start, end = w["validation_end_idx"], w["test_end_idx"]
+    dates = panels["Close"].index[start:end]
+    if not pairs:
+        days = dates.to_series().diff().dt.days.fillna(0)
+        curve = capital * (1 + cfg["env"].get("cash_rate_annual", 0) * days / 365).cumprod()
+        return curve, curve.diff().dropna().tolist(), pd.DataFrame()
 
-    rng = np.random.default_rng(seed)
-    portfolio = INITIAL_CAPITAL
-    positions = {pair: 0.0 for pair in pairs}
-    equity_dates = [test_prices.index[window_size]]
-    equity = [portfolio]
-    pnls = []
-    frictions = []
-
-    residuals = {}
-    zscores = {}
+    lag = cfg["env"].get("signal_lag_bars", 1)
+    left = max(0, start - max(ZSCORE_LOOKBACK + lag, cfg["env"]["liquidity"]["adv_window"]))
+    tickers = sorted({ticker for pair in pairs for ticker in pair})
+    bars = {key: df[tickers].iloc[left:end] for key, df in panels.items()}
+    features, metrics = {}, {}
     for pair in pairs:
-        alpha, beta = models[pair]
-        residuals[pair] = _residual(test_prices, pair, alpha, beta)
-        zscores[pair] = (
-            (residuals[pair] - residuals[pair].rolling(ZSCORE_LOOKBACK, min_periods=20).mean())
-            / (residuals[pair].rolling(ZSCORE_LOOKBACK, min_periods=20).std() + 1e-12)
-        ).fillna(0.0)
-
-    for t in range(window_size, len(test_prices) - 1):
-        targets = {}
-        if policy == "cash":
-            targets = {pair: 0.0 for pair in pairs}
-        elif policy == "random":
-            for pair in pairs:
-                direction = rng.uniform(-1.0, 1.0)
-                size = abs(rng.uniform(-1.0, 1.0))
-                targets[pair] = direction * size * max_pos
-        elif policy == "zscore":
-            for pair in pairs:
-                z = float(zscores[pair].iloc[t])
-                targets[pair] = -np.sign(z) * max_pos if abs(z) >= ENTRY_Z else 0.0
-        else:
-            raise ValueError(policy)
-
-        targets = _scale_positions(targets, max_total)
-        turnover = sum(abs(targets[pair] - positions[pair]) * portfolio for pair in pairs)
-        transaction_costs = tc * turnover
-        carry, borrow, financing, cash_credit = _carry_costs(portfolio, targets, env_cfg)
-
-        gross_pnl = 0.0
-        pair_pnls = {}
-        for pair in pairs:
-            a, b = pair
-            ret_a = test_prices[a].iloc[t + 1] / test_prices[a].iloc[t] - 1
-            ret_b = test_prices[b].iloc[t + 1] / test_prices[b].iloc[t] - 1
-            pnl = targets[pair] * portfolio * (ret_a - ret_b)
-            gross_pnl += pnl
-            pair_pnls[f"{a}-{b}"] = pnl
-
-        total_pnl = gross_pnl - transaction_costs - carry
-        portfolio += total_pnl
-        positions = targets
-
-        pnls.append(total_pnl)
-        equity_dates.append(test_prices.index[t + 1])
-        equity.append(portfolio)
-        frictions.append(
-            {
-                "date": test_prices.index[t + 1],
-                "turnover": turnover,
-                "transaction_costs": transaction_costs,
-                "carry_costs": carry,
-                "borrow_cost": borrow,
-                "financing_cost": financing,
-                "cash_credit": cash_credit,
-                "gross_exposure": sum(abs(v) for v in targets.values()),
-                "active_positions": sum(1 for v in targets.values() if abs(v) > 1e-9),
-                "gross_pnl": gross_pnl,
-                "pnl": total_pnl,
-                **{f"pnl_{k}": v for k, v in pair_pnls.items()},
-            }
-        )
-
-    return pd.Series(equity, index=pd.to_datetime(equity_dates)), pnls, pd.DataFrame(frictions)
+        residual = _residual(bars[cfg["data"]["price_type"]], pair, *models[pair])
+        rolling = residual.rolling(ZSCORE_LOOKBACK, min_periods=20)
+        z = ((residual - rolling.mean()) / (rolling.std() + 1e-12)).fillna(0)
+        features[pair] = z.to_numpy(dtype=np.float32)[:, None]
+        metrics[pair] = [{"zscore": value} for value in z]
+    cfg = {**cfg, "env": {**cfg["env"], "initial_capital": capital, "signal_lag_bars": lag}}
+    env = InversePairsTradingEnv(
+        bars, pairs, {p: "inverse" if models[p][1] < 0 else "traditional" for p in pairs},
+        cfg, bars["Close"].index, features, metrics, [1] * len(pairs),
+        pair_models={p: {"hedge_ratio": models[p][1]} for p in pairs}, start_step=start-left,
+    )
+    if policy == "zscore":
+        actor = ZScoreMeanReversionPolicy(env, entry_z=ENTRY_Z)
+    elif policy == "random":
+        actor = RandomPolicy(env.action_space.shape[0], seed=seed)
+    elif policy == "cash":
+        actor = CashPolicy(env.action_space.shape[0])
+    else:
+        raise ValueError(policy)
+    result = Backtester(actor, env, cfg).run()
+    frictions = result["frictions"].rename(columns={"net_pnl": "pnl"})
+    for key, values in result["pair_pnls"].items():
+        frictions[f"pnl_{key}"] = values
+    return result["equity_curve"], result["bar_pnls"], frictions
 
 
 def _diagnose_pair(train_prices, test_prices, train_returns, test_returns, pair, alpha, beta, selected_meta):
@@ -459,14 +425,11 @@ def _diagnose_pair(train_prices, test_prices, train_returns, test_returns, pair,
 
 def _stitch_equity(curves_by_window):
     stitched = None
-    capital = INITIAL_CAPITAL
     all_pnls = []
     all_frictions = []
     pair_pnls = {}
     for window, curve, pnls, frictions in curves_by_window:
-        returns = curve.pct_change().fillna(0.0)
-        scaled = capital * (1.0 + returns).cumprod()
-        capital = float(scaled.iloc[-1])
+        scaled = curve
         if stitched is None:
             stitched = scaled
         else:
@@ -489,7 +452,7 @@ def _markdown_table(df, cols):
         return "No rows."
     use = df[cols].copy()
     for c in use.columns:
-        if c not in {"variant", "policy", "decision"}:
+        if pd.api.types.is_numeric_dtype(use[c]):
             use[c] = use[c].map(lambda x: "" if pd.isna(x) else f"{x:.6g}")
     lines = ["| " + " | ".join(use.columns) + " |"]
     lines.append("| " + " | ".join(["---"] * len(use.columns)) + " |")
@@ -499,13 +462,13 @@ def _markdown_table(df, cols):
 
 
 def _write_report(summary_df, diag_df, variant_notes, ppo_decisions):
-    z = summary_df[summary_df.policy == "zscore"].sort_values("total_return", ascending=False)
+    z = summary_df[(summary_df.policy == "zscore") & (summary_df.status == "complete")].sort_values("total_return", ascending=False)
     best = z.iloc[0] if len(z) else None
     inverse = z[z.variant.str.startswith("inverse")]
     positive = z[z.variant.str.startswith("positive")]
     inv_best = inverse.total_return.max() if len(inverse) else np.nan
     pos_best = positive.total_return.max() if len(positive) else np.nan
-    persist = diag_df.groupby("variant")["coint_persisted"].mean().reset_index()
+    persist = diag_df.groupby("variant")["coint_persisted"].mean().reset_index() if len(diag_df) else pd.DataFrame()
 
     if len(z) and (z["total_return"] > 0).any():
         edge_line = "At least one z-score family produced positive return in this two-window pivot, but the evidence is not yet robust enough for tuning."
@@ -519,7 +482,7 @@ def _write_report(summary_df, diag_df, variant_notes, ppo_decisions):
         "",
         "## Protocol",
         "- Data: fixed daily yfinance cache from `outputs/daily_validation/cache/yfinance_daily_500plus_2014_2024.csv`.",
-        "- Universe: 936 requested symbols, 744 retained full-period symbols.",
+        f"- Each fold screens the {len(DataLoader.last_manifest.get('symbols_requested', []))} requested symbols using observations through its training cutoff.",
         "- Walk-forward: same daily validation protocol, two train/validation/test windows.",
         "- Pair selection: train window only.",
         "- Baselines: cash, deterministic random policy, residual z-score mean reversion.",
@@ -537,7 +500,7 @@ def _write_report(summary_df, diag_df, variant_notes, ppo_decisions):
         "## Baseline Results",
         _markdown_table(
             summary_df.sort_values(["policy", "total_return"], ascending=[True, False]),
-            ["variant", "policy", "total_return", "sharpe", "max_drawdown", "profit_factor", "turnover", "total_costs"],
+            ["variant", "policy", "status", "total_return", "sharpe", "max_drawdown", "bar_profit_factor", "turnover", "total_costs"],
         ),
         "",
         "## Cointegration Persistence",
@@ -563,7 +526,7 @@ def _write_report(summary_df, diag_df, variant_notes, ppo_decisions):
         "1. Expand the walk-forward window count before drawing a conclusion.",
         "2. Make cointegration persistence and validation ADF/half-life gates mandatory before test.",
         "3. Exclude or isolate volatility/inverse/leveraged ETPs and compare results separately.",
-        "4. Use hedge-ratio residual PnL for classical pairs instead of the current equal-notional spread return approximation.",
+        "4. Verify hedge-ratio stability across subsequent evaluation windows.",
         "5. Only rerun PPO if a z-score family remains positive after costs across many windows.",
     ])
 
@@ -586,11 +549,10 @@ def run_pivot():
         cache_path=data_cfg["cache_path"],
         max_ffill_gap=data_cfg["max_ffill_gap"],
         min_retained_symbols=data_cfg["min_retained_symbols"],
-        require_full_coverage=data_cfg["require_full_coverage"],
+        preserve_calendar=True,
         coverage_tolerance_days=data_cfg["coverage_tolerance_days"],
     )
     prices = panels[data_cfg.get("price_type", "Adj Close")]
-    returns = prices.pct_change().dropna()
     idx = prices.index
     windows = _generate_windows(idx, cfg)
 
@@ -601,13 +563,13 @@ def run_pivot():
 
     for variant in VARIANTS:
         curves_by_policy = {"cash": [], "random": [], "zscore": []}
-        pair_pnls_by_policy = {"cash": {}, "random": {}, "zscore": {}}
+        missing_quote = None
 
         for w in windows:
-            train_prices = prices.iloc[w["train_start_idx"]:w["train_end_idx"]]
+            train_prices = _training_prices(panels, w, cfg)
             test_prices = prices.iloc[w["validation_end_idx"]:w["test_end_idx"]]
             train_returns = train_prices.pct_change().dropna()
-            test_returns = test_prices.pct_change().dropna()
+            test_returns = test_prices.pct_change(fill_method=None)
 
             allowed = None
             if variant["constraint"]:
@@ -625,9 +587,10 @@ def run_pivot():
                 }
             )
 
-            if not selected_pairs:
-                continue
 
+            missing_quote = _missing_evaluation_price(prices, selected_pairs, w, cfg)
+            if missing_quote:
+                break
             models = {}
             for item in selected:
                 pair = item["pair"]
@@ -655,7 +618,8 @@ def run_pivot():
             for policy in curves_by_policy:
                 curve, pnls, frictions = _backtest_policy(
                     policy=policy,
-                    test_prices=test_prices,
+                    panels=panels, w=w,
+                    capital=curves_by_policy[policy][-1][1].iloc[-1] if curves_by_policy[policy] else INITIAL_CAPITAL,
                     pairs=selected_pairs,
                     models=models,
                     cfg=cfg,
@@ -664,6 +628,12 @@ def run_pivot():
                 curves_by_policy[policy].append((w["window"], curve, pnls, frictions))
 
         for policy, rows in curves_by_policy.items():
+            if missing_quote:
+                summary_rows.append({"variant": variant["name"], "policy": policy,
+                                     "status": missing_quote, "total_return": np.nan,
+                                     "sharpe": np.nan, "max_drawdown": np.nan,
+                                     "bar_profit_factor": np.nan, "turnover": np.nan, "total_costs": np.nan})
+                continue
             curve, pnls, frictions, pair_pnls = _stitch_equity(rows)
             name = f"{variant['name']}__{policy}"
             equity_curves[name] = curve.rename(name)
@@ -671,12 +641,12 @@ def run_pivot():
             summary_rows.append(
                 {
                     "variant": variant["name"],
-                    "policy": policy,
+                    "policy": policy, "status": "complete",
                     "selected_pair_windows": len(rows),
                     **met,
                 }
             )
-            pair_pnls_by_policy[policy] = pair_pnls
+
 
     summary_df = pd.DataFrame(summary_rows)
     diag_df = pd.DataFrame(diag_rows)
@@ -684,15 +654,18 @@ def run_pivot():
     ppo_decisions = {}
     for variant in VARIANTS:
         row = summary_df[(summary_df.variant == variant["name"]) & (summary_df.policy == "zscore")]
-        persist_rate = diag_df[diag_df.variant == variant["name"]]["coint_persisted"].mean()
+        persist_rate = diag_df.loc[diag_df.variant == variant["name"], "coint_persisted"].mean() if len(diag_df) else np.nan
         if row.empty:
             ppo_decisions[variant["name"]] = "skipped_no_pairs"
             continue
         row = row.iloc[0]
+        if row["status"] != "complete":
+            ppo_decisions[variant["name"]] = row["status"]
+            continue
         if (
             row["total_return"] > 0
             and row["sharpe"] > 0
-            and row["profit_factor"] > 1.05
+            and row["bar_profit_factor"] > 1.05
             and persist_rate >= 0.5
         ):
             ppo_decisions[variant["name"]] = "eligible_but_not_run_in_pivot_script"

@@ -49,7 +49,9 @@ def calculate_sortino(returns, rf=0.0):
         return 0.0
     excess = returns - rf / 252
     downside = excess[excess < 0]
-    dd = downside.std() + _EPS
+    dd = np.sqrt(np.mean(np.minimum(excess, 0) ** 2))
+    if dd == 0:
+        return np.nan
     return float((excess.mean() / dd) * np.sqrt(252))
 
 
@@ -135,7 +137,7 @@ def calculate_profit_factor(trades):
     gp = sum(p for p in trades if p > 0)
     gl = abs(sum(p for p in trades if p < 0))
     if gl == 0:
-        return np.inf
+        return np.inf if gp > 0 else np.nan
     return float(gp / gl)
 
 
@@ -224,11 +226,10 @@ def calculate_capture_ratios(strategy, benchmark):
 # =====================================================================
 
 def calculate_monthly_returns(equity_curve):
-    monthly = (
-        equity_curve
-        .resample("ME")
-        .apply(lambda x: x.iloc[-1] / x.iloc[0] - 1 if len(x) > 1 else 0)
-    )
+    ends = equity_curve.resample("ME").last().dropna()
+    starts = ends.shift()
+    starts.iloc[0] = equity_curve.iloc[0]
+    monthly = ends / starts - 1
     return monthly.round(4).to_dict()
 
 
@@ -236,13 +237,13 @@ def calculate_monthly_returns(equity_curve):
 #                     MAIN METRIC AGGREGATOR
 # =====================================================================
 
-def compute_all_metrics(equity_curve, benchmark_curve, trade_pnls):
+def compute_all_metrics(equity_curve, benchmark_curve, bar_pnls):
 
     values = equity_curve.values
     dates = equity_curve.index
     returns = equity_curve.pct_change().dropna()
 
-    years = len(values) / 252
+    years = (dates[-1] - dates[0]).total_seconds() / (365.25 * 86400)
 
     # Core
     cagr = calculate_cagr(values, years)
@@ -264,29 +265,18 @@ def compute_all_metrics(equity_curve, benchmark_curve, trade_pnls):
     # Monthly
     monthly_returns = calculate_monthly_returns(equity_curve)
 
-    # Trades
-    win_rate = calculate_win_rate(trade_pnls)
-    payoff = calculate_payoff_ratio(trade_pnls)
-    expectancy = calculate_expectancy(win_rate, payoff)
-    profit_factor = calculate_profit_factor(trade_pnls)
-    max_consec_losses = calculate_max_consecutive_losses(trade_pnls)
+    # Per-bar PnL statistics
+    win_rate = calculate_win_rate(bar_pnls)
+    payoff = calculate_payoff_ratio(bar_pnls)
+    expectancy = float(np.mean(bar_pnls)) if len(bar_pnls) else np.nan
+    profit_factor = calculate_profit_factor(bar_pnls)
+    max_consec_losses = calculate_max_consecutive_losses(bar_pnls)
 
     # Benchmark
     if benchmark_curve is not None:
-        bench_r = (
-            benchmark_curve
-            .pct_change()
-            .reindex(dates)
-            .dropna()
-            .values
-        )
-
-        strat_r = (
-            returns
-            .reindex(dates)
-            .dropna()
-            .values
-        )
+        benchmark_returns = benchmark_curve.reindex(dates).pct_change(fill_method=None)
+        aligned = pd.concat([returns, benchmark_returns], axis=1, sort=False).dropna()
+        strat_r, bench_r = aligned.iloc[:, 0].values, aligned.iloc[:, 1].values
 
         alpha, beta = calculate_alpha_beta(strat_r, bench_r)
         te = calculate_tracking_error(strat_r, bench_r)
@@ -303,7 +293,7 @@ def compute_all_metrics(equity_curve, benchmark_curve, trade_pnls):
         "sharpe": sharpe,
         "sortino": sortino,
         "max_drawdown": max_dd,
-        "drawdown_duration_days": dd_duration,
+        "drawdown_duration_bars": dd_duration,
         "ulcer_index": ulcer,
         "cdar": cdar,
         "mar": mar,
@@ -313,12 +303,12 @@ def compute_all_metrics(equity_curve, benchmark_curve, trade_pnls):
         "gain_to_pain": gpr,
         "monthly_returns": monthly_returns,
 
-        # Trade metrics
-        "win_rate": win_rate,
-        "payoff_ratio": payoff,
-        "expectancy": expectancy,
-        "profit_factor": profit_factor,
-        "max_consecutive_losses": max_consec_losses,
+        # Per-bar PnL statistics
+        "bar_win_rate": win_rate,
+        "bar_payoff_ratio": payoff,
+        "mean_bar_pnl": expectancy,
+        "bar_profit_factor": profit_factor,
+        "bar_max_consecutive_losses": max_consec_losses,
 
         # Benchmark
         "alpha": alpha,

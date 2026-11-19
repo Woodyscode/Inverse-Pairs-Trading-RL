@@ -1,0 +1,573 @@
+[
+  {
+    "window": 1,
+    "train_start": "2014-01-03T00:00:00",
+    "train_end": "2017-01-03T00:00:00",
+    "validation_start": "2017-01-04T00:00:00",
+    "test_start": "2017-07-06T00:00:00",
+    "end": "2018-01-03T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 2,
+    "train_start": "2014-07-07T00:00:00",
+    "train_end": "2017-07-05T00:00:00",
+    "validation_start": "2017-07-06T00:00:00",
+    "test_start": "2018-01-04T00:00:00",
+    "end": "2018-07-05T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 3,
+    "train_start": "2015-01-05T00:00:00",
+    "train_end": "2018-01-03T00:00:00",
+    "validation_start": "2018-01-04T00:00:00",
+    "test_start": "2018-07-06T00:00:00",
+    "end": "2019-01-04T00:00:00",
+    "pairs": [
+      [
+        "UVXY",
+        "VTI"
+      ],
+      [
+        "UVXY",
+        "VOO"
+      ],
+      [
+        "TVIXF",
+        "VOO"
+      ],
+      [
+        "TVIXF",
+        "VTI"
+      ],
+      [
+        "UVXY",
+        "XLG"
+      ],
+      [
+        "TVIXF",
+        "XLG"
+      ],
+      [
+        "TVIXF",
+        "VUG"
+      ],
+      [
+        "UVXY",
+        "VTV"
+      ],
+      [
+        "UVXY",
+        "VYM"
+      ],
+      [
+        "TVIXF",
+        "VTV"
+      ]
+    ],
+    "models": [
+      {
+        "pair": [
+          "UVXY",
+          "VTI"
+        ],
+        "type": "inverse",
+        "correlation": -0.8399360646245179,
+        "observations": 756,
+        "coint_pvalue": 0.00018881961692326278,
+        "hedge_ratio": -2413763.0499833487,
+        "intercept": 263339774.70053563,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.027378844453873105,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -236590333.94896582
+        ],
+        "scaler_scale": [
+          294293371.72710043
+        ]
+      },
+      {
+        "pair": [
+          "UVXY",
+          "VOO"
+        ],
+        "type": "inverse",
+        "correlation": -0.8399313877762888,
+        "observations": 756,
+        "coint_pvalue": 0.00028292757363230847,
+        "hedge_ratio": -1390734.4436859328,
+        "intercept": 268831731.28608024,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.04074157060305242,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -238012649.55107912
+        ],
+        "scaler_scale": [
+          294395209.56844133
+        ]
+      },
+      {
+        "pair": [
+          "TVIXF",
+          "VOO"
+        ],
+        "type": "inverse",
+        "correlation": -0.8347228810318196,
+        "observations": 756,
+        "coint_pvalue": 3.346527607447888e-06,
+        "hedge_ratio": -6175.823548950773,
+        "intercept": 1194161.4779905556,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.0005019791411171832,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -1028294.5415789926
+        ],
+        "scaler_scale": [
+          1294549.7393204125
+        ]
+      },
+      {
+        "pair": [
+          "TVIXF",
+          "VTI"
+        ],
+        "type": "inverse",
+        "correlation": -0.8344217130844902,
+        "observations": 756,
+        "coint_pvalue": 2.3794599985603693e-06,
+        "hedge_ratio": -10713.208254121035,
+        "intercept": 1169234.9219220092,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.0003616779197811761,
+        "selected_features": [
+          119
+        ],
+        "scaler_mean": [
+          2642282.8776978417
+        ],
+        "scaler_scale": [
+          1572725.9671781105
+        ]
+      },
+      {
+        "pair": [
+          "UVXY",
+          "XLG"
+        ],
+        "type": "inverse",
+        "correlation": -0.8210072151759303,
+        "observations": 756,
+        "coint_pvalue": 3.0677740380659895e-06,
+        "hedge_ratio": -17417342.611513257,
+        "intercept": 267532533.02428383,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.00046323387974796443,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -215567697.265018
+        ],
+        "scaler_scale": [
+          252916590.20867726
+        ]
+      },
+      {
+        "pair": [
+          "TVIXF",
+          "XLG"
+        ],
+        "type": "inverse",
+        "correlation": -0.8179360320210592,
+        "observations": 756,
+        "coint_pvalue": 9.178933686100643e-06,
+        "hedge_ratio": -77431.65370562316,
+        "intercept": 1189573.0613234246,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.0013584821855428951,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -928255.7218310898
+        ],
+        "scaler_scale": [
+          1117820.841463802
+        ]
+      },
+      {
+        "pair": [
+          "TVIXF",
+          "VUG"
+        ],
+        "type": "inverse",
+        "correlation": -0.8108659202640655,
+        "observations": 756,
+        "coint_pvalue": 8.073787618887377e-06,
+        "hedge_ratio": -55839.334709529714,
+        "intercept": 1116301.8778860113,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.0012029943552142191,
+        "selected_features": [
+          119
+        ],
+        "scaler_mean": [
+          4432048.920863309
+        ],
+        "scaler_scale": [
+          3067303.379631737
+        ]
+      },
+      {
+        "pair": [
+          "UVXY",
+          "VTV"
+        ],
+        "type": "inverse",
+        "correlation": -0.8087073342745096,
+        "observations": 756,
+        "coint_pvalue": 0.00012590309135233966,
+        "hedge_ratio": -3494766.1448049787,
+        "intercept": 272065200.37313443,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.01838185133744159,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -229474765.89507645
+        ],
+        "scaler_scale": [
+          295898717.0793298
+        ]
+      },
+      {
+        "pair": [
+          "UVXY",
+          "VYM"
+        ],
+        "type": "inverse",
+        "correlation": -0.8044202714787347,
+        "observations": 756,
+        "coint_pvalue": 0.0001107778925471609,
+        "hedge_ratio": -4857350.281660517,
+        "intercept": 289781316.18348974,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.01628435020443265,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -218895436.42491287
+        ],
+        "scaler_scale": [
+          293366229.4545783
+        ]
+      },
+      {
+        "pair": [
+          "TVIXF",
+          "VTV"
+        ],
+        "type": "inverse",
+        "correlation": -0.8034113252306616,
+        "observations": 756,
+        "coint_pvalue": 1.6078376670864527e-06,
+        "hedge_ratio": -15517.563485902698,
+        "intercept": 1208408.3119555125,
+        "screened_tests": 153,
+        "adjusted_pvalue": 0.00024599916306422727,
+        "selected_features": [
+          102
+        ],
+        "scaler_mean": [
+          -989834.4107120651
+        ],
+        "scaler_scale": [
+          1305304.822838027
+        ]
+      }
+    ],
+    "inverse_pairs": [
+      [
+        "UVXY",
+        "VTI"
+      ],
+      [
+        "UVXY",
+        "VOO"
+      ],
+      [
+        "TVIXF",
+        "VOO"
+      ],
+      [
+        "TVIXF",
+        "VTI"
+      ],
+      [
+        "UVXY",
+        "XLG"
+      ],
+      [
+        "TVIXF",
+        "XLG"
+      ],
+      [
+        "TVIXF",
+        "VUG"
+      ],
+      [
+        "UVXY",
+        "VTV"
+      ],
+      [
+        "UVXY",
+        "VYM"
+      ],
+      [
+        "TVIXF",
+        "VTV"
+      ]
+    ],
+    "traditional_pairs": []
+  },
+  {
+    "window": 4,
+    "train_start": "2015-07-07T00:00:00",
+    "train_end": "2018-07-05T00:00:00",
+    "validation_start": "2018-07-06T00:00:00",
+    "test_start": "2019-01-07T00:00:00",
+    "end": "2019-07-08T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 5,
+    "train_start": "2016-01-05T00:00:00",
+    "train_end": "2019-01-04T00:00:00",
+    "validation_start": "2019-01-07T00:00:00",
+    "test_start": "2019-07-09T00:00:00",
+    "end": "2020-01-06T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 6,
+    "train_start": "2016-07-06T00:00:00",
+    "train_end": "2019-07-08T00:00:00",
+    "validation_start": "2019-07-09T00:00:00",
+    "test_start": "2020-01-07T00:00:00",
+    "end": "2020-07-07T00:00:00",
+    "pairs": [
+      [
+        "TVIXF",
+        "VTI"
+      ]
+    ],
+    "models": [
+      {
+        "pair": [
+          "TVIXF",
+          "VTI"
+        ],
+        "type": "inverse",
+        "correlation": -0.8077448089944388,
+        "observations": 756,
+        "coint_pvalue": 3.057979504143539e-10,
+        "hedge_ratio": -461.4736141465069,
+        "intercept": 57797.62060062361,
+        "screened_tests": 87,
+        "adjusted_pvalue": 2.6604421686048787e-08,
+        "selected_features": [
+          119
+        ],
+        "scaler_mean": [
+          2712191.798561151
+        ],
+        "scaler_scale": [
+          1672079.6638293674
+        ]
+      }
+    ],
+    "inverse_pairs": [
+      [
+        "TVIXF",
+        "VTI"
+      ]
+    ],
+    "traditional_pairs": []
+  },
+  {
+    "window": 7,
+    "train_start": "2017-01-04T00:00:00",
+    "train_end": "2020-01-06T00:00:00",
+    "validation_start": "2020-01-07T00:00:00",
+    "test_start": "2020-07-08T00:00:00",
+    "end": "2021-01-05T00:00:00",
+    "pairs": [
+      [
+        "TMV",
+        "USIG"
+      ]
+    ],
+    "models": [
+      {
+        "pair": [
+          "TMV",
+          "USIG"
+        ],
+        "type": "inverse",
+        "correlation": -0.8489288072402555,
+        "observations": 756,
+        "coint_pvalue": 0.00029099133560088784,
+        "hedge_ratio": -3.830229576104272,
+        "intercept": 198.8857934007676,
+        "screened_tests": 124,
+        "adjusted_pvalue": 0.03608292561451009,
+        "selected_features": [
+          119
+        ],
+        "scaler_mean": [
+          313802.1582733813
+        ],
+        "scaler_scale": [
+          624737.8026213226
+        ]
+      }
+    ],
+    "inverse_pairs": [
+      [
+        "TMV",
+        "USIG"
+      ]
+    ],
+    "traditional_pairs": []
+  },
+  {
+    "window": 8,
+    "train_start": "2017-07-06T00:00:00",
+    "train_end": "2020-07-07T00:00:00",
+    "validation_start": "2020-07-08T00:00:00",
+    "test_start": "2021-01-06T00:00:00",
+    "end": "2021-07-07T00:00:00",
+    "pairs": [
+      [
+        "BLV",
+        "TBT"
+      ]
+    ],
+    "models": [
+      {
+        "pair": [
+          "BLV",
+          "TBT"
+        ],
+        "type": "inverse",
+        "correlation": -0.8088307215459684,
+        "observations": 756,
+        "coint_pvalue": 0.00020232422061458797,
+        "hedge_ratio": -1.2017500145662223,
+        "intercept": 100.63309347169236,
+        "screened_tests": 43,
+        "adjusted_pvalue": 0.008699941486427283,
+        "selected_features": [
+          119
+        ],
+        "scaler_mean": [
+          2700509.496402878
+        ],
+        "scaler_scale": [
+          1697844.4047552582
+        ]
+      }
+    ],
+    "inverse_pairs": [
+      [
+        "BLV",
+        "TBT"
+      ]
+    ],
+    "traditional_pairs": []
+  },
+  {
+    "window": 9,
+    "train_start": "2018-01-04T00:00:00",
+    "train_end": "2021-01-05T00:00:00",
+    "validation_start": "2021-01-06T00:00:00",
+    "test_start": "2021-07-08T00:00:00",
+    "end": "2022-01-04T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 10,
+    "train_start": "2018-07-06T00:00:00",
+    "train_end": "2021-07-07T00:00:00",
+    "validation_start": "2021-07-08T00:00:00",
+    "test_start": "2022-01-05T00:00:00",
+    "end": "2022-07-07T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 11,
+    "train_start": "2019-01-07T00:00:00",
+    "train_end": "2022-01-04T00:00:00",
+    "validation_start": "2022-01-05T00:00:00",
+    "test_start": "2022-07-08T00:00:00",
+    "end": "2023-01-05T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 12,
+    "train_start": "2019-07-09T00:00:00",
+    "train_end": "2022-07-07T00:00:00",
+    "validation_start": "2022-07-08T00:00:00",
+    "test_start": "2023-01-06T00:00:00",
+    "end": "2023-07-10T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  },
+  {
+    "window": 13,
+    "train_start": "2020-01-07T00:00:00",
+    "train_end": "2023-01-05T00:00:00",
+    "validation_start": "2023-01-06T00:00:00",
+    "test_start": "2023-07-11T00:00:00",
+    "end": "2023-12-29T00:00:00",
+    "pairs": [],
+    "models": [],
+    "inverse_pairs": [],
+    "traditional_pairs": []
+  }
+]

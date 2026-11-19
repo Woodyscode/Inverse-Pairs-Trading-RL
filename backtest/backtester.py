@@ -46,7 +46,7 @@ class Backtester:
         obs, info = self.env.reset()
 
         portfolio_vals = [self.env.portfolio_value]
-        trade_pnls = []
+        bar_pnls = []
         friction_rows = []
         start_idx = min(self.env.current_step, len(self.price_index) - 1)
         dates = [self.price_index[start_idx]]
@@ -69,7 +69,7 @@ class Backtester:
 
             if info.get("has_transition", True):
                 portfolio_vals.append(pv)
-                trade_pnls.append(info.get("pnl", 0.0))
+                bar_pnls.append(info.get("pnl", 0.0))
 
                 step_idx = min(self.env.current_step, len(self.price_index) - 1)
                 dates.append(self.price_index[step_idx])
@@ -81,11 +81,10 @@ class Backtester:
                     "borrow_cost": info.get("borrow_cost", 0.0),
                     "financing_cost": info.get("financing_cost", 0.0),
                     "cash_credit": info.get("cash_credit", 0.0),
-                    "gross_exposure": sum(abs(v) for v in getattr(self.env, "positions", {}).values()),
-                    "active_positions": sum(
-                        1 for v in getattr(self.env, "positions", {}).values()
-                        if abs(v) > 1e-9
-                    ),
+                    "gross_exposure": info["gross_exposure"],
+                    "active_positions": info["active_positions"],
+                    "gross_pnl": info["gross_pnl"],
+                    "net_pnl": info["pnl"],
                 })
 
         # ===============================================================
@@ -110,13 +109,13 @@ class Backtester:
         metrics = compute_all_metrics(
             equity_curve=equity_curve,
             benchmark_curve=spy_curve,
-            trade_pnls=trade_pnls,
+            bar_pnls=bar_pnls,
         )
 
         # ===============================================================
         # Plotting
         # ===============================================================
-        self._run_plots(equity_curve, spy_curve, trade_pnls)
+        self._run_plots(equity_curve, spy_curve, bar_pnls)
 
         # ===============================================================
         # Print summary
@@ -135,7 +134,7 @@ class Backtester:
             "equity_curve": equity_curve,
             "spy_curve": spy_curve,
             "metrics": metrics,
-            "trade_pnls": trade_pnls,
+            "bar_pnls": bar_pnls,
             "frictions": pd.DataFrame(friction_rows),
             "pair_pnls": pair_pnls,
         }
@@ -171,7 +170,7 @@ class Backtester:
     # ==================================================================
     # Plot handling
     # ==================================================================
-    def _run_plots(self, equity_curve, spy_curve, trade_pnls):
+    def _run_plots(self, equity_curve, spy_curve, bar_pnls):
 
         cfg = self.config.get("plotting", {})
 
@@ -201,7 +200,7 @@ class Backtester:
         if cfg.get("rolling_sharpe", True):          plot_rolling_sharpe(rets)
         if cfg.get("rolling_sortino", True):         plot_rolling_sortino(rets)
         if cfg.get("rolling_vol", True):             plot_rolling_vol(rets)
-        if cfg.get("trade_pnl_distribution", True):  plot_trade_pnl_distribution(trade_pnls)
+        if cfg.get("trade_pnl_distribution", True):  plot_trade_pnl_distribution(bar_pnls)
         if cfg.get("gain_to_pain", True):            plot_gain_to_pain(rets)
 
 

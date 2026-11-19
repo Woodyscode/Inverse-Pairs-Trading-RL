@@ -276,7 +276,16 @@ class DataLoader:
         coverage_start=None,
         coverage_end=None,
         coverage_tolerance_days=0,
+        preserve_calendar=False,
     ):
+        if preserve_calendar:
+            # Do not let future raw observation counts determine fold eligibility.
+            common = sorted(set.intersection(*(set(df.columns) for df in panels.values())))
+            if len(common) < (min_retained_symbols or 1):
+                raise RuntimeError("Insufficient symbols in the requested snapshot")
+            DataLoader.last_quality_report = build_data_quality_report(panels, kept_tickers=common)
+            return {key: df[common].copy() for key, df in panels.items()}
+
         def filter_min(df):
             return df.loc[:, df.count() >= min_history]
 
@@ -321,6 +330,9 @@ class DataLoader:
             for key, df in filtered.items()
         }
 
+        # A forward fill may bridge an interior gap, never extend a delisted series.
+        for key, frame in final.items():
+            final[key] = frame.where(filtered[key][common].notna().iloc[::-1].cummax().iloc[::-1])
         valid_mask = None
         for df in final.values():
             mask = df.notna().all(axis=1)
@@ -347,6 +359,7 @@ class DataLoader:
         coverage_tolerance_days=0,
         download_threads=True,
         download_chunk_size=None,
+        preserve_calendar=False,
         synthetic_periods: int = 340,
         seed: int = 42,
     ):
@@ -415,9 +428,18 @@ class DataLoader:
 
         download_timestamp = locals().get("download_timestamp")
         original_source = locals().get("original_source")
+        if source != "synthetic":
+            if any(not df.index.is_unique for df in panels.values()):
+                raise ValueError("Duplicate dates in price snapshot")
+            requested = sorted(set(tickers).intersection(panels["Close"].columns))
+            panels = {
+                key: df.loc[(df.index >= pd.Timestamp(start)) & (df.index < pd.Timestamp(end)), requested]
+                for key, df in panels.items()
+            }
         final = DataLoader._finalize_panels(
             panels=panels,
             min_history=min_history,
+            preserve_calendar=preserve_calendar,
             max_ffill_gap=max_ffill_gap,
             min_retained_symbols=min_retained_symbols,
             require_full_coverage=require_full_coverage,

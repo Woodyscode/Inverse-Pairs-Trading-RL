@@ -71,16 +71,11 @@ def plot_return_distribution(returns: pd.Series,
 #                          MONTHLY RETURNS HEATMAP
 # =============================================================================
 def plot_monthly_heatmap(equity_curve):
-    df = equity_curve.pct_change().dropna().to_frame("return")
-    df["Year"] = df.index.year
-    df["Month"] = df.index.month
-
-    # FIX: pivot requires keyword arguments
-    heatmap = df.pivot(
-        index="Year",
-        columns="Month",
-        values="return"
-    )
+    ends = equity_curve.resample("ME").last().dropna()
+    starts = ends.shift()
+    starts.iloc[0] = equity_curve.iloc[0]
+    monthly = (ends / starts - 1).to_frame("return")
+    heatmap = monthly.pivot_table(index=monthly.index.year, columns=monthly.index.month, values="return")
 
     import seaborn as sns
     import matplotlib.pyplot as plt
@@ -103,7 +98,7 @@ def plot_monthly_heatmap(equity_curve):
 #                            ALLOCATION PIE CHART
 # =============================================================================
 def plot_allocation_pie(allocation_dict):
-    if not allocation_dict:
+    if not any(allocation_dict.values()):
         print("No allocation to plot.")
         return
 
@@ -242,7 +237,7 @@ def plot_rolling_vol(returns: pd.Series,
 #                   NEW: TRADE PNL DISTRIBUTION (DEEPER)
 # =============================================================================
 def plot_trade_pnl_distribution(trade_pnls,
-                                title="Trade PnL Distribution"):
+                                title="Bar PnL Distribution"):
 
     trade_pnls = np.array(trade_pnls)
 

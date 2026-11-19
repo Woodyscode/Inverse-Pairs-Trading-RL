@@ -17,6 +17,8 @@ from research_pivot import (
     _load_config,
     _metrics,
     _stitch_equity,
+    _training_prices,
+    _missing_evaluation_price,
 )
 
 
@@ -92,16 +94,13 @@ def _safe_float(value):
     return value if math.isfinite(value) else np.nan
 
 
-def _available_pair(pair, train_prices, test_prices):
-    missing = [sym for sym in pair if sym not in train_prices.columns or sym not in test_prices.columns]
+def _available_pair(pair, train_prices):
+    missing = [sym for sym in pair if sym not in train_prices.columns]
     if missing:
         return False, f"missing_symbols:{','.join(missing)}"
     train_count = train_prices[list(pair)].dropna().shape[0]
-    test_count = test_prices[list(pair)].dropna().shape[0]
     if train_count < MIN_TRAIN_OBSERVATIONS:
         return False, f"insufficient_train_observations:{train_count}"
-    if test_count < 30:
-        return False, f"insufficient_test_observations:{test_count}"
     return True, "selected"
 
 
@@ -153,7 +152,8 @@ def _collect_pair_contributions(frictions):
     return contributions
 
 
-def _run_family(family, prices, returns, windows, cfg):
+def _run_family(family, panels, returns, windows, cfg):
+    prices = panels[cfg["data"]["price_type"]]
     summary_rows = []
     diag_rows = []
     availability_notes = []
@@ -164,7 +164,7 @@ def _run_family(family, prices, returns, windows, cfg):
     selected_pair_keys = set()
 
     for w in windows:
-        train_prices = prices.iloc[w["train_start_idx"]:w["train_end_idx"]]
+        train_prices = _training_prices(panels, w, cfg)
         test_prices = prices.iloc[w["validation_end_idx"]:w["test_end_idx"]]
         train_returns = returns.loc[train_prices.index.intersection(returns.index)]
         test_returns = returns.loc[test_prices.index.intersection(returns.index)]
@@ -174,7 +174,7 @@ def _run_family(family, prices, returns, windows, cfg):
 
         for pair in family["pairs"]:
             pair = tuple(pair)
-            available, reason = _available_pair(pair, train_prices, test_prices)
+            available, reason = _available_pair(pair, train_prices)
             availability_notes.append(
                 {
                     "family": family["family"],
@@ -212,13 +212,21 @@ def _run_family(family, prices, returns, windows, cfg):
             diag["family_type"] = family["family_type"]
             diag_rows.append(diag)
 
-        if not selected_pairs:
-            continue
+
+        missing_quote = _missing_evaluation_price(prices, selected_pairs, w, cfg)
+        if missing_quote:
+            for policy in curves_by_policy:
+                summary_rows.append({"family": family["family"], "family_type": family["family_type"],
+                                     "policy": policy, "status": missing_quote, "total_return": np.nan,
+                                     "sharpe": np.nan, "max_drawdown": np.nan, "bar_profit_factor": np.nan,
+                                     "turnover": np.nan, "total_costs": np.nan})
+            return summary_rows, [], {}, availability_notes
 
         for policy in curves_by_policy:
             curve, pnls, frictions = _backtest_policy(
                 policy=policy,
-                test_prices=test_prices,
+                panels=panels, w=w,
+                capital=curves_by_policy[policy][-1][1].iloc[-1] if curves_by_policy[policy] else INITIAL_CAPITAL,
                 pairs=selected_pairs,
                 models=models,
                 cfg=cfg,
@@ -237,7 +245,7 @@ def _run_family(family, prices, returns, windows, cfg):
             {
                 "family": family["family"],
                 "family_type": family["family_type"],
-                "policy": policy,
+                "policy": policy, "status": "complete",
                 "selected_pair_windows": len(rows),
                 "declared_pairs": len({_pair_key(pair) for pair in family["pairs"]}),
                 "selected_unique_pairs": len(selected_pair_keys),
@@ -256,7 +264,7 @@ def _run_family(family, prices, returns, windows, cfg):
 
 def _compare_to_broad(summary_df):
     broad_path = Path("outputs/research_pivot/summary.csv")
-    if not broad_path.exists():
+    if not broad_path.exists() or "bar_profit_factor" not in pd.read_csv(broad_path, nrows=0).columns:
         return {
             "available": False,
             "best_broad_family": None,
@@ -282,7 +290,7 @@ def _compare_to_broad(summary_df):
 
 
 def _write_report(summary_df, diag_df, availability_df, broad_compare, cfg):
-    zscore = summary_df[summary_df["policy"] == "zscore"].copy()
+    zscore = summary_df[(summary_df["policy"] == "zscore") & (summary_df["status"] == "complete")].copy()
     normal_z = zscore[zscore["family_type"] != "volatility_inverse_leveraged_isolated"].sort_values(
         "total_return", ascending=False
     )
@@ -311,7 +319,7 @@ def _write_report(summary_df, diag_df, availability_df, broad_compare, cfg):
     normal_has_edge = (
         len(normal_positive) > 0
         and normal_positive.iloc[0]["sharpe"] > 0
-        and normal_positive.iloc[0]["profit_factor"] > 1.05
+        and normal_positive.iloc[0]["bar_profit_factor"] > 1.05
     )
 
     if broad_compare["available"]:
@@ -377,10 +385,11 @@ def _write_report(summary_df, diag_df, availability_df, broad_compare, cfg):
                 "family",
                 "family_type",
                 "policy",
+                "status",
                 "total_return",
                 "sharpe",
                 "max_drawdown",
-                "profit_factor",
+                "bar_profit_factor",
                 "turnover",
                 "total_costs",
             ],
@@ -412,7 +421,7 @@ def _write_report(summary_df, diag_df, availability_df, broad_compare, cfg):
         "",
         "## Interpretation",
         "- This experiment tests the economic-pair premise only. It does not tune entry thresholds, holding rules, hedge ratios, or PPO.",
-        "- Pair PnL uses the same equal-notional spread approximation as the prior pivot runner; hedge-ratio-weighted execution remains a separate implementation improvement.",
+        "- Pair PnL uses the signed, training-fitted hedge ratio and gross exposure cap in the PPO research simulator.",
     ]
 
     with open(OUTPUT_DIR / "economic_pairs_report.md", "w") as f:
@@ -438,12 +447,12 @@ def run_economic_pairs():
         cache_path=data_cfg["cache_path"],
         max_ffill_gap=data_cfg["max_ffill_gap"],
         min_retained_symbols=data_cfg["min_retained_symbols"],
-        require_full_coverage=data_cfg["require_full_coverage"],
+        preserve_calendar=True,
         coverage_tolerance_days=data_cfg["coverage_tolerance_days"],
     )
     price_type = data_cfg.get("price_type", "Adj Close")
     prices = panels[price_type]
-    returns = prices.pct_change().dropna()
+    returns = prices.pct_change(fill_method=None)
     windows = _generate_windows(prices.index, cfg)
 
     families = ECONOMIC_FAMILIES + [_volatility_family()]
@@ -455,7 +464,7 @@ def run_economic_pairs():
     for family in families:
         fam_summary, fam_diag, fam_curves, fam_availability = _run_family(
             family=family,
-            prices=prices,
+            panels=panels,
             returns=returns,
             windows=windows,
             cfg=cfg,

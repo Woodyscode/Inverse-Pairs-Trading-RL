@@ -79,8 +79,8 @@ def _friction_stats(frictions):
             "carry_costs": 0.0,
             "total_costs": 0.0,
             "borrow_financing_costs": 0.0,
-            "total_trades": 0,
-            "average_holding_period": np.nan,
+            "bars_with_turnover": 0,
+            "active_bars_per_turnover_bar": np.nan,
         }
 
     df = frictions.copy()
@@ -99,17 +99,16 @@ def _friction_stats(frictions):
         "carry_costs": carry_costs,
         "total_costs": transaction_costs + carry_costs,
         "borrow_financing_costs": borrow + financing,
-        "total_trades": trade_events,
-        "average_holding_period": avg_holding,
+        "bars_with_turnover": trade_events,
+        "active_bars_per_turnover_bar": avg_holding,
     }
 
 
 def _summary_row(strategy, status, results=None, frictions=None, error=None):
     metrics = (results or {}).get("metrics", {})
-    trade_pnls = (results or {}).get("trade_pnls", [])
+    bar_pnls = (results or {}).get("bar_pnls", [])
     friction = _friction_stats(frictions)
-    initial_capital = 100000.0
-    avg_trade_pnl = float(np.mean(trade_pnls)) if trade_pnls else np.nan
+    avg_bar_pnl = float(np.mean(bar_pnls)) if bar_pnls else np.nan
 
     return {
         "strategy": strategy,
@@ -123,19 +122,19 @@ def _summary_row(strategy, status, results=None, frictions=None, error=None):
         "sortino": _metric(metrics, "sortino"),
         "max_drawdown": _metric(metrics, "max_drawdown"),
         "calmar": _metric(metrics, "mar"),
-        "win_rate": _metric(metrics, "win_rate"),
-        "profit_factor": _metric(metrics, "profit_factor"),
-        "average_trade_pnl": avg_trade_pnl,
-        "average_trade_return": avg_trade_pnl / initial_capital if math.isfinite(avg_trade_pnl) else np.nan,
+        "bar_win_rate": _metric(metrics, "bar_win_rate"),
+        "bar_profit_factor": _metric(metrics, "bar_profit_factor"),
+        "average_bar_pnl": avg_bar_pnl,
+        "average_bar_return": float(results["equity_curve"].pct_change().mean()) if results else np.nan,
         **friction,
     }
 
 
-def _named_result(metrics, equity_curve, trade_pnls, window_metrics=None):
+def _named_result(metrics, equity_curve, bar_pnls, window_metrics=None):
     return {
         "metrics": metrics,
         "equity_curve": equity_curve,
-        "trade_pnls": trade_pnls,
+        "bar_pnls": bar_pnls,
         "window_metrics": window_metrics or [],
     }
 
@@ -182,9 +181,9 @@ def _markdown_table(rows):
         "sharpe",
         "max_drawdown",
         "calmar",
-        "win_rate",
-        "profit_factor",
-        "total_trades",
+        "bar_win_rate",
+        "bar_profit_factor",
+        "bars_with_turnover",
         "turnover",
         "total_costs",
     ]
@@ -257,7 +256,7 @@ def _write_report(summary_rows, statuses, base_config):
         "## Limitations",
         "- This run is a cheap daily-bar validation benchmark, not an expensive final evidence run.",
         "- `trades.csv` is a bar-level turnover/cost event log, not a closed-position trade ledger.",
-        "- Average holding period is a turnover-event proxy derived from active-position days divided by turnover events.",
+        "- Active bars per turnover bar divides the number of invested bars by the number of bars with executed orders.",
         "- Adjusted close execution is a total-return modeling convention and is not an intraday fill model.",
         "",
         "## Verdict",
@@ -308,7 +307,7 @@ def run_daily_validation(config_path="config/daily_validation_config.yaml"):
                     named = _named_result(
                         metrics=metrics,
                         equity_curve=curve,
-                        trade_pnls=results.get("baseline_trade_pnls", {}).get(raw_name, []),
+                        bar_pnls=results.get("baseline_bar_pnls", {}).get(raw_name, []),
                         window_metrics=results.get("window_metrics", []),
                     )
                     summary_rows.append(_summary_row(out_name, "pass", named, fr))

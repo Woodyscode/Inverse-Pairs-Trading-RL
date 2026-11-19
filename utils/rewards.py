@@ -8,6 +8,7 @@ def reward_pnl(
     prev_portfolio_value,
     position_size,
     reward_clip=5.0,
+    penalty=0.01,
 ):
     """
     Pure PnL-based reward for RL trading.
@@ -34,7 +35,7 @@ def reward_pnl(
     # ------------------------------------------------------------------
     # 2. Tiny position penalty (encourages precision, optional)
     # ------------------------------------------------------------------
-    pos_penalty = 0.01 * position_size  # very small
+    pos_penalty = penalty * position_size  # very small
 
     reward = pnl_ret - pos_penalty
 

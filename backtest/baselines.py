@@ -40,7 +40,7 @@ class ZScoreMeanReversionPolicy:
 
         for i, pair in enumerate(self.env.pairs):
             metrics = self.env.metrics.get(pair, [])
-            step = min(self.env.current_step, len(metrics) - 1)
+            step = min(max(0, self.env.current_step - self.env.signal_lag_bars), len(metrics) - 1)
             zscore = metrics[step].get("zscore", 0.0) if metrics else 0.0
 
             if abs(zscore) < self.entry_z:

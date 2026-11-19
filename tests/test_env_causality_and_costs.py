@@ -11,6 +11,7 @@ def _make_env(
     adj_close=None,
     price_type="Adj Close",
     signal_lag_bars=0,
+    hedge_ratio=1.0,
 ):
     dates = pd.bdate_range("2020-01-01", periods=len(close["A"]))
     close_df = pd.DataFrame(close, index=dates, dtype=float)
@@ -51,6 +52,7 @@ def _make_env(
         config=config,
         price_index=dates,
         features=features,
+        pair_models={pair: {'hedge_ratio': hedge_ratio}},
         metrics={pair: []},
         feature_dims=[1],
     )
@@ -87,7 +89,7 @@ def test_env_pnl_uses_configured_price_type():
 
     _, _, _, _, info = env.step(np.array([1.0, 1.0], dtype=np.float32))
 
-    expected = 0.25 * 100000.0 * ((220 - 200) / 200)
+    expected = (25000.0 / (200 + 100)) * (220 - 200)
     assert np.isclose(info["gross_pnl"], expected)
 
 
@@ -97,7 +99,7 @@ def test_action_reward_uses_future_interval_after_observation():
 
     _, _, _, _, info = env.step(np.array([1.0, 1.0], dtype=np.float32))
 
-    expected = 0.25 * 100000.0 * ((220 - 200) / 200)
+    expected = (25000.0 / (200 + 100)) * (220 - 200)
     assert np.isclose(info["gross_pnl"], expected)
     assert np.isclose(info["pnl"], expected)
 
@@ -116,8 +118,8 @@ def test_costs_scale_with_turnover_not_profit():
     assert np.isclose(entry["pnl"], -50.0)
 
     _, _, _, _, hold = env.step(np.array([1.0, 1.0], dtype=np.float32))
-    assert np.isclose(hold["turnover"], 0.0)
-    assert np.isclose(hold["transaction_costs"], 0.0)
+    assert np.isclose(hold["turnover"], 0.25 * entry["transaction_costs"])
+    assert np.isclose(hold["transaction_costs"], 12.5 * 0.002)
 
     _, _, _, _, exit_info = env.step(np.array([0.0, 0.0], dtype=np.float32))
     assert exit_info["gross_pnl"] == 0.0
@@ -177,3 +179,23 @@ def test_borrow_financing_and_liquidity_assumptions_apply():
     assert info["borrow_cost"] > 0.0
     assert info["financing_cost"] > 0.0
     assert info["pnl"] < 0.0
+
+def test_negative_beta_signed_legs_settle_at_final_mark():
+    env = _make_env({"A": [100, 100, 110], "B": [50, 50, 48]},
+                    hedge_ratio=-2.0, transaction_cost=0.001)
+    env.reset()
+    _, _, done, _, info = env.step(np.array([1, 1]))
+    # 125 units of A and 250 units of B. Both legs are long.
+    assert done and info["borrow_cost"] == 0
+    assert np.isclose(info["gross_pnl"], 125 * 10 - 250 * 2)
+    assert np.isclose(info["turnover"], 25000 + 125 * 110 + 250 * 48)
+    assert np.isclose(info["pnl"], 750 - info["turnover"] * 0.001)
+    assert np.all(env.units == 0)
+
+def test_baseline_and_policy_observe_same_lagged_bar():
+    from backtest.baselines import ZScoreMeanReversionPolicy
+    env = _make_env({"A": [100] * 4, "B": [100] * 4}, signal_lag_bars=1)
+    env.metrics[("A", "B")] = [{"zscore": 2}, {"zscore": -2}, {}, {}]
+    obs, _ = env.reset()
+    action = ZScoreMeanReversionPolicy(env).predict(obs)
+    np.testing.assert_array_equal(action, [-1, 1])

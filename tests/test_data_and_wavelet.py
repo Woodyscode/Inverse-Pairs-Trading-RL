@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 import yaml
-from pathlib import Path
-from uuid import uuid4
 
 from data.loaders import clean_df, DataLoader
 from data.wavelet import causal_wavelet_denoise
@@ -46,10 +44,9 @@ def test_loader_finalize_drops_unfilled_leading_rows_instead_of_bfill():
     assert not final["Close"].isna().any().any()
 
 
-def test_yfinance_snapshot_cache_is_used_without_download(monkeypatch):
+def test_yfinance_snapshot_cache_is_used_without_download(monkeypatch, tmp_path):
     panels = DataLoader._synthetic_ohlcv(["A", "B"], start="2020-01-01", periods=5)
-    test_dir = Path("outputs/test_tmp") / f"cache_{uuid4().hex}"
-    test_dir.mkdir(parents=True, exist_ok=True)
+    test_dir = tmp_path
     cache_path = test_dir / "snapshot.csv"
     DataLoader._save_csv_panels(panels, str(cache_path))
 
@@ -76,9 +73,8 @@ def test_yfinance_snapshot_cache_is_used_without_download(monkeypatch):
     assert DataLoader.last_manifest["cache_sha256"]
 
 
-def test_universe_include_files_and_min_retained_guard():
-    test_dir = Path("outputs/test_tmp") / f"universe_{uuid4().hex}"
-    test_dir.mkdir(parents=True, exist_ok=True)
+def test_universe_include_files_and_min_retained_guard(tmp_path):
+    test_dir = tmp_path
     base_path = test_dir / "base.yaml"
     include_path = test_dir / "include.yaml"
     with open(include_path, "w") as f:
@@ -111,3 +107,10 @@ def test_causal_wavelet_output_does_not_change_when_future_changes():
     revised = causal_wavelet_denoise(changed, window=32, level=2)
 
     pd.testing.assert_series_equal(baseline.iloc[:100], revised.iloc[:100])
+
+def test_walkforward_calendar_preserves_ipo_and_delisting_gaps():
+    panels = _panels_with_late_start()
+    for frame in panels.values():
+        frame.iloc[-1, 1] = np.nan
+    final = DataLoader._finalize_panels(panels, min_history=3, preserve_calendar=True)
+    pd.testing.assert_frame_equal(final["Close"], panels["Close"])

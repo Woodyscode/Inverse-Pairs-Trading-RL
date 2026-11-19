@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pandas as pd
 
 from backtest.walkforward import WalkForwardEngine
 from data.loaders import DataLoader
@@ -76,7 +77,10 @@ def test_train_validation_and_test_features_are_nonzero_with_context():
 
     assert np.any(train_features[pair] != 0.0)
     assert np.any(val_features[pair] != 0.0)
-    assert np.any(test_features[pair] != 0.0)
+    assert np.any(test_features[pair][0] != 0.0)
+    changed = {key: frame.iloc[:1].copy() for key, frame in test.items()}
+    prefix, _ = engine._compute_features_for_window(changed, [pair], context_ohlcv=val_context)
+    np.testing.assert_allclose(prefix[pair][0], test_features[pair][0])
 
 
 def _select_first_window_pairs(ohlcv):
@@ -151,3 +155,53 @@ def test_validation_windows_are_ordered_and_non_overlapping():
 
     assert ohl_train["Close"].index.max() < ohl_val["Close"].index.min()
     assert ohl_val["Close"].index.max() < ohl_test["Close"].index.min()
+
+def test_training_hedge_target_matches_next_bar_basket_return():
+    from env.features.targets import build_targets
+    from utils.pairs_selection import select_pair_models
+    prices = pd.DataFrame({"A": [100., 102., 98., 104.], "B": [50., 49., 51., 48.]})
+    config = _config()
+    config["pairs"].update(use_cointegration=False, min_observations=3)
+    model, = select_pair_models(prices.pct_change(), prices, config)
+    assert np.isclose(model["hedge_ratio"], -2)
+    pair = ("A", "B")
+    revised = pd.concat([prices, pd.DataFrame({"A": [108.], "B": [49.]})], ignore_index=True)
+    targets = build_targets({"Adj Close": revised}, [pair], pair_models={pair: model})
+    assert np.isclose(targets[pair][-2], (4 + 2 * 1) / (104 + 2 * 48))
+    assert np.isnan(targets[pair][-1])
+
+
+def test_bar_metrics_include_month_boundary_and_pairwise_benchmark_dates():
+    from backtest.metrics import compute_all_metrics
+    index = pd.to_datetime(["2024-01-30", "2024-01-31", "2024-02-01", "2024-02-02"])
+    curve = pd.Series([100., 99., 110., 108.9], index=index)
+    spy = pd.Series([100., 99., np.nan, 101.], index=index)
+    metrics = compute_all_metrics(curve, spy, curve.diff().dropna())
+    assert np.isclose(metrics["monthly_returns"][pd.Timestamp("2024-02-29")], 0.10)
+    assert np.isclose(metrics["bar_win_rate"], 1 / 3)
+
+def test_holm_adjusts_across_all_screened_pairs_before_truncation(monkeypatch):
+    from utils.pairs_selection import select_pair_models
+    prices = pd.DataFrame({"A": [10., 12, 11, 13], "B": [20., 18, 19, 17], "C": [40., 36, 38, 34]})
+    config = _config()
+    config["pairs"].update(min_observations=3, cointegration_p_value=0.05, multiple_testing="holm")
+    monkeypatch.setattr("utils.pairs_selection.coint", lambda *args: (0, 0.04, None))
+    assert select_pair_models(prices.pct_change(), prices, config) == []
+    config["pairs"]["multiple_testing"] = "none"
+    assert len(select_pair_models(prices.pct_change(), prices, config)) == 2
+
+
+def test_no_pair_windows_preserve_the_test_calendar():
+    ohlcv, returns = _aligned_returns(_synthetic_panels(370))
+    cfg = _config()
+    cfg["pairs"].update(allow_positive=False, allow_negative=False)
+    cfg["walkforward"].update(train_years=0.75, min_train_size=150,
+                              validation_months=2, min_validation_size=30, test_months=2)
+    cfg["benchmark_curve"] = pd.Series(1.0, index=returns.index)
+    engine = WalkForwardEngine(ohlcv, returns, cfg, None, returns.index)
+    windows = list(engine._generate_validation_windows())
+    result = engine.run()
+    expected = windows[0][2]["Close"].index.append([w[2]["Close"].index for w in windows[1:]])
+    assert result["equity_curve"].index.equals(expected)
+    assert (result["equity_curve"] == cfg["env"]["initial_capital"]).all()
+    assert all(w["models"] == [] for w in result["selected_pairs"])

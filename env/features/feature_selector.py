@@ -123,7 +123,7 @@ class FeatureSelector:
             p = np.array([i, y[i]])
 
             # distance from point to line
-            dist = np.abs(np.cross(end - start, p - start)) / chord
+            dist = abs((n - 1) * (p[1] - start[1]) - (end[1] - start[1]) * i) / chord
 
             if dist > max_dist:
                 max_dist = dist
@@ -156,8 +156,8 @@ class FeatureSelector:
         for pair, X in features.items():
             y = targets[pair]
 
-            idx = self.fit_pair(pair, X, y)
-            reduced[pair] = X[:, idx]
+            self.fit_pair(pair, X, y)
+            reduced[pair] = self.transform_pair(pair, X)
 
         return reduced
 

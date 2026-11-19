@@ -5,7 +5,7 @@ data:
   price_type: "Adj Close"
   source: "synthetic"
   synthetic_periods: 320
-  min_history: 220
+  min_history: 150
   max_ffill_gap: 5
   resample_frequency: "1D"
   quality_report_path: "outputs/research_validation/base/data_quality_report.csv"

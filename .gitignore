@@ -1,4 +1,4 @@
-﻿# Ignore Python cache and bytecode
+# Ignore Python cache and bytecode
 __pycache__/
 *.pyc
 *.pyo
@@ -25,3 +25,11 @@ Thumbs.db
 .DS_Store
 
 outputs/daily_validation/cache/
+
+outputs/runs/cache/
+
+# Local replays and preliminary runs. Published research evidence lives under outputs/runs.
+outputs/test_tmp/
+outputs/runs/audit_ppo_pilot/
+outputs/runs/inverse_tracking_pilot/
+outputs/runs/strict_alpha_control/

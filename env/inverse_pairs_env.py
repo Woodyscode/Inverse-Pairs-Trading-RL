@@ -21,6 +21,8 @@ class InversePairsTradingEnv(gym.Env):
         features,
         metrics,
         feature_dims,
+        pair_models=None,
+        start_step=None,
     ):
         super().__init__()
 
@@ -31,6 +33,18 @@ class InversePairsTradingEnv(gym.Env):
         self.close = ohlcv[self.price_type]
         self.signal_lag_bars = int(config.get("env", {}).get("signal_lag_bars", 0))
 
+        if self.signal_lag_bars < 0:
+            raise ValueError("signal_lag_bars must be nonnegative")
+        self.start_step = start_step
+        self.betas = np.array([
+            (pair_models or {}).get(pair, {}).get("hedge_ratio", 1.0) for pair in pairs
+        ])
+        self.leg_prices = self.close[[a for a, _ in pairs]].to_numpy(dtype=float)
+        self.hedge_prices = self.close[[b for _, b in pairs]].to_numpy(dtype=float)
+        for prices in (self.leg_prices, self.hedge_prices):
+            if not np.isfinite(prices).all() or (prices <= 0).any():
+                raise ValueError("Selected legs require a positive quote on every evaluation bar")
+        self.units = np.zeros(len(pairs))
         self.pairs = pairs
         self.pair_types = pair_types
 
@@ -52,6 +66,11 @@ class InversePairsTradingEnv(gym.Env):
         self.cash_rate_annual = config["env"].get("cash_rate_annual", 0.0)
         self.liquidity_cfg = config["env"].get("liquidity", {"enabled": False})
 
+        if self.liquidity_cfg.get("enabled", False):
+            # Orders at the close use only preceding sessions' raw dollar volume.
+            self.adv = (ohlcv["Close"] * ohlcv["Volume"]).shift(1).rolling(
+                int(self.liquidity_cfg.get("adv_window", 20)), min_periods=1
+            ).mean()
         self.max_pos = config["env"]["max_position"]
         self.max_total_exposure = config["env"]["max_total_exposure"]
 
@@ -133,125 +152,84 @@ class InversePairsTradingEnv(gym.Env):
 
         return target_positions, total_exposure
 
-    def _dollar_volume(self, asset, step):
-        volume = self.ohlcv.get("Volume")
-        if volume is None or asset not in volume:
-            return np.inf
+    def _limit_trades(self, delta, a_prices, b_prices):
+        # Each pair is a separately executable basket. Shared symbols consume
+        # the same ADV budget, including when two baskets trade opposite ways.
+        blocked = self.config["env"].get("unborrowable_symbols", [])
+        for i, (a, b) in enumerate(self.pairs):
+            desired = self.units[i] + delta[i]
+            if (a in blocked and desired < 0) or (b in blocked and desired * self.betas[i] > 0):
+                delta[i] = -self.units[i]
 
-        window = int(self.liquidity_cfg.get("adv_window", 20))
-        start = max(0, step - window + 1)
-        dollar_volume = volume[asset].iloc[start:step + 1] * self.close[asset].iloc[start:step + 1]
-        value = float(dollar_volume.mean())
-        return value if np.isfinite(value) and value > 0 else np.inf
-
-    def _apply_liquidity_limits(self, target_positions):
         if not self.liquidity_cfg.get("enabled", False):
-            return target_positions
-
-        max_trade_pct_adv = float(self.liquidity_cfg.get("max_trade_pct_adv", 0.01))
-        limited = target_positions.copy()
-
-        for (A, B) in self.pairs:
-            current = self.positions[(A, B)]
-            target = limited[(A, B)]
-            delta = target - current
-            if delta == 0:
-                continue
-
-            pair_trade_notional = abs(delta) * self.portfolio_value
-            leg_trade_notional = pair_trade_notional / 2.0
-            cap = min(
-                self._dollar_volume(A, self.current_step),
-                self._dollar_volume(B, self.current_step),
-            ) * max_trade_pct_adv
-
-            if leg_trade_notional > cap and leg_trade_notional > 0:
-                scale = cap / leg_trade_notional
-                limited[(A, B)] = current + delta * scale
-
-        return limited
-
-    def _calculate_turnover(self, target_positions):
-        turnover = 0.0
-        for pair in self.pairs:
-            turnover += abs(target_positions[pair] - self.positions[pair]) * self.portfolio_value
-        return turnover
-
-    def _calculate_carry_costs(self, target_positions):
-        short_notional = 0.0
-        gross_notional = 0.0
-
-        for pos in target_positions.values():
-            pair_notional = abs(pos) * self.portfolio_value
-            gross_notional += pair_notional
-            short_notional += pair_notional / 2.0
-
-        borrow_cost = short_notional * self.borrow_fee_annual / 252.0
-        financing_cost = gross_notional * self.financing_rate_annual / 252.0
-        net_cash = max(
-            self.portfolio_value * (1.0 - sum(abs(v) for v in target_positions.values())),
-            0.0,
-        )
-        cash_credit = net_cash * self.cash_rate_annual / 252.0
-        carry_costs = borrow_cost + financing_cost - cash_credit
-
-        return carry_costs, borrow_cost, financing_cost, cash_credit
+            return delta
+        orders = {}
+        for i, (a, b) in enumerate(self.pairs):
+            orders[a] = orders.get(a, 0.0) + abs(delta[i]) * a_prices[i]
+            orders[b] = orders.get(b, 0.0) + abs(delta[i] * self.betas[i]) * b_prices[i]
+        factors = {}
+        for asset, order in orders.items():
+            cap = self.adv[asset].iat[self.current_step] * self.liquidity_cfg["max_trade_pct_adv"]
+            factors[asset] = min(1.0, cap / order) if order and np.isfinite(cap) else 0.0
+        return delta * np.array([
+            min(factors[a], factors[b]) if self.betas[i] else factors[a]
+            for i, (a, b) in enumerate(self.pairs)
+        ])
 
     def step(self, action):
-        if self.current_step >= self.T - 1:
-            return self._get_obs(), 0.0, True, False, {
-                "portfolio_value": self.portfolio_value,
-                "pnl": 0.0,
-                "reward": 0.0,
-                "gross_pnl": 0.0,
-                "transaction_costs": 0.0,
-                "carry_costs": 0.0,
-                "borrow_cost": 0.0,
-                "financing_cost": 0.0,
-                "cash_credit": 0.0,
-                "turnover": 0.0,
-                "has_transition": False,
-            }
-
-        target_positions, total_exposure = self._parse_action(action)
-        target_positions = self._apply_liquidity_limits(target_positions)
-        total_exposure = sum(abs(pos) for pos in target_positions.values())
-
+        t = self.current_step
+        if t >= self.T - 1:
+            raise RuntimeError("Reset the finished episode before stepping")
         if self.cost_model != "turnover":
             raise ValueError(f"Unsupported cost_model: {self.cost_model}")
 
-        turnover = self._calculate_turnover(target_positions)
-        transaction_costs = (self.transaction_cost + self.slippage_cost) * turnover
-        carry_costs, borrow_cost, financing_cost, cash_credit = self._calculate_carry_costs(target_positions)
-
-        gross_pnl = 0.0
-        for (A, B) in self.pairs:
-            pos = target_positions[(A, B)]
-
-            A_entry = self.close[A].iloc[self.current_step]
-            B_entry = self.close[B].iloc[self.current_step]
-            A_exit = self.close[A].iloc[self.current_step + 1]
-            B_exit = self.close[B].iloc[self.current_step + 1]
-
-            ret_A = (A_exit - A_entry) / A_entry
-            ret_B = (B_exit - B_entry) / B_entry
-            spread_ret = ret_A - ret_B
-
-            pnl = pos * self.portfolio_value * spread_ret
-            gross_pnl += pnl
-            self.per_pair_pnls[(A, B)].append(pnl)
-
-        total_pnl = gross_pnl - transaction_costs - carry_costs
-
         prev_value = self.portfolio_value
-        self.portfolio_value += total_pnl
-        self.positions.update(target_positions)
+        target, _ = self._parse_action(action)
+        a, b = self.leg_prices[t], self.hedge_prices[t]
+        next_a, next_b = self.leg_prices[t + 1], self.hedge_prices[t + 1]
+        unit_gross = a + abs(self.betas) * b
+        desired = np.array(list(target.values()), dtype=float) * prev_value / unit_gross
+        delta = self._limit_trades(desired - self.units, a, b)
+        self.units += delta
+
+        leg_a = self.units * a
+        leg_b = -self.units * self.betas * b
+        gross = np.abs(leg_a).sum() + np.abs(leg_b).sum()
+        short = -np.minimum(leg_a, 0).sum() - np.minimum(leg_b, 0).sum()
+        total_exposure = gross / prev_value
+        carry_days = (self.price_index[t + 1] - self.price_index[t]).days
+        year_fraction = carry_days / 365.0
+        borrow_cost = short * self.borrow_fee_annual * year_fraction
+        financing_cost = gross * self.financing_rate_annual * year_fraction
+        cash_credit = max(prev_value - gross, 0.0) * self.cash_rate_annual * year_fraction
+        carry_costs = borrow_cost + financing_cost - cash_credit
+        pair_pnl = self.units * ((next_a - a) - self.betas * (next_b - b))
+        for pair, pnl in zip(self.pairs, pair_pnl):
+            self.per_pair_pnls[pair].append(float(pnl))
+        gross_pnl = pair_pnl.sum()
+        turnover = np.dot(abs(delta), unit_gross)
+        end_gross = self.units * (next_a + abs(self.betas) * next_b)
+        terminal = t + 1 == self.T - 1
+        costs_rate = self.transaction_cost + self.slippage_cost
+        if prev_value + gross_pnl - turnover * costs_rate - carry_costs <= 0:
+            terminal = True
+        if terminal:
+            # Fold boundaries settle both legs at the final mark, with exit costs.
+            turnover += abs(end_gross).sum()
+            self.units.fill(0)
+        transaction_costs = turnover * costs_rate
+        total_pnl = gross_pnl - transaction_costs - carry_costs
+        self.portfolio_value = max(0.0, prev_value + total_pnl)
+        total_pnl = self.portfolio_value - prev_value
+        for i, pair in enumerate(self.pairs):
+            self.positions[pair] = 0.0 if terminal else end_gross[i] / self.portfolio_value
 
         reward = reward_pnl(
             portfolio_value=self.portfolio_value,
             prev_portfolio_value=prev_value,
             position_size=total_exposure,
             reward_clip=self.reward_cfg["reward_clip"],
+            penalty=self.reward_cfg.get("pos_penalty", 0.01),
         )
 
         self.pnl_history.append(total_pnl)
@@ -272,16 +250,19 @@ class InversePairsTradingEnv(gym.Env):
             "financing_cost": financing_cost,
             "cash_credit": cash_credit,
             "turnover": turnover,
+            "gross_exposure": total_exposure,
+            "active_positions": int(np.count_nonzero(end_gross)),
             "has_transition": True,
         }
 
-        return obs, reward, False, False, info
+        return obs, reward, terminal, False, info
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
 
-        self.current_step = max(1, self.window)
-        if self.current_step >= self.T:
+        self.units.fill(0)
+        self.current_step = max(self.signal_lag_bars, self.window) if self.start_step is None else self.start_step
+        if not self.signal_lag_bars <= self.current_step < self.T - 1:
             raise ValueError(
                 f"window_size={self.window} leaves no tradable steps for T={self.T}"
             )
@@ -301,16 +282,11 @@ class InversePairsTradingEnv(gym.Env):
     def finalize_positions(self):
         alloc = {}
 
-        for (A, B), pos in self.positions.items():
-            alloc[A] = alloc.get(A, 0) + pos / 2
-            alloc[B] = alloc.get(B, 0) - pos / 2
-
-        total = sum(abs(v) for v in alloc.values())
-
-        if total > 0:
-            for key in alloc:
-                alloc[key] /= total
-
+        if self.portfolio_value > 0:
+            for i, (a, b) in enumerate(self.pairs):
+                weight = self.units[i] / self.portfolio_value
+                alloc[a] = alloc.get(a, 0.0) + weight * self.leg_prices[self.current_step, i]
+                alloc[b] = alloc.get(b, 0.0) - weight * self.betas[i] * self.hedge_prices[self.current_step, i]
         return alloc
 
     def render(self):
