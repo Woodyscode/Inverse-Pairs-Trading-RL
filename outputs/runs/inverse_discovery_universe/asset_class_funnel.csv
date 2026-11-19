@@ -1,0 +1,18 @@
+category,asset_mix,pair_windows,strict,strict_and_liquid
+cross_asset,commodity / currency,2340,0,0
+cross_asset,commodity / equity,4290,0,0
+cross_asset,commodity / fixed_income,3510,0,0
+cross_asset,currency / equity,3432,0,0
+cross_asset,currency / fixed_income,2808,0,0
+cross_asset,equity / fixed_income,5148,39,27
+inverse_etf,commodity / commodity,39,39,14
+inverse_etf,currency / currency,52,52,0
+inverse_etf,equity / equity,195,182,141
+inverse_etf,fixed_income / fixed_income,78,78,25
+stock_sector_hedge,commodity / equity,99195,0,0
+stock_sector_hedge,currency / equity,79356,0,0
+stock_sector_hedge,equity / equity,99195,1864,1579
+stock_sector_hedge,equity / fixed_income,119034,0,0
+within_macro_class,commodity / commodity,1326,30,26
+within_macro_class,currency / currency,793,44,8
+within_macro_class,fixed_income / fixed_income,1872,245,92

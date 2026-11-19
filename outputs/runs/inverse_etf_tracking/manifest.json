@@ -1,0 +1,78 @@
+{
+  "revision": "eff0dac55d843b3b83caec819efa213021a3e3e5",
+  "inputs": {
+    "C:\\Users\\kwood\\Projects\\Inverse-Pairs-Trading-RL\\inverse_tracking_study.py": "46ebacb63c169b87a52bce349d384dc8bc24a09340fc68b363b2675f11abdee9",
+    "data\\fetch_tracking_minutes.py": "81687a79b5c66e51abf148a0ac1b96af35d1fa7612e5cb9b026d26d604a12bba",
+    "outputs\\runs\\inverse_discovery_universe\\training_diagnostics.csv": "b12a5f28bb58ac42c191f7a28ff13b273739e76a1f27f5aa1c886c41af0d214c",
+    "inverse_pair_discovery.py": "c33ab90636d2fd23d656c91efff8761c5f2d0972f861988ced6f4aa41c71cb10",
+    "outputs\\runs\\cache\\rv_sp500\\DIA.parquet": "5e26e5547b470def5250da62ae850eef7912df6f4c9b0846f8669cd95dc983a7",
+    "outputs\\runs\\cache\\rv_sp500\\DOG.parquet": "397d25d66e0c2c884bc17627e567aca6259a94656706288a763d4cedecb3af02",
+    "outputs\\runs\\cache\\rv_sp500\\DXD.parquet": "e0077141cba116bcbc5cc07024a077078fa85ff110471c65908b89ae4a25f658",
+    "outputs\\runs\\cache\\rv_sp500\\HYG.parquet": "6833d58ae50c1f8c241b1366bc390016ddd3d15c46fb519f088b91643dbabab2",
+    "outputs\\runs\\cache\\rv_sp500\\IWM.parquet": "c2a3d2f8f9ab12962e129061efdf135b638c48d05903b8e04595970fcf54e354",
+    "outputs\\runs\\cache\\rv_sp500\\PSQ.parquet": "96ca3c44a1c3338c01a59230738351ba92d23fee2422879f848e5f8701d7ee54",
+    "outputs\\runs\\cache\\rv_sp500\\QID.parquet": "5761961422f496b5b7e7d5c24d49087f5886662f5ad27e182980c4cabb88f6ab",
+    "outputs\\runs\\cache\\rv_sp500\\QQQ.parquet": "e414fef5b94c8b66c58007fb5bbd4368d883d1a9abad8cb944e3426cfd5f8487",
+    "outputs\\runs\\cache\\rv_sp500\\RWM.parquet": "3320d36615e4b82aa951ace5769af48bbd9f054aa8e4ce24c7e5e0f74713ddad",
+    "outputs\\runs\\cache\\rv_sp500\\SCO.parquet": "af197cd80c79ba08f0672b76e10aafd07cbc23178413a155892760d96b24d31d",
+    "outputs\\runs\\cache\\rv_sp500\\SDS.parquet": "a670024ed22bd7502646ac0136ed78501ad2962c17eda8f139442506dfc2e7b2",
+    "outputs\\runs\\cache\\rv_sp500\\SH.parquet": "07862123dc213cb31bbb38be7d319ffb177b274c8668da529dd5d945e0d33a26",
+    "outputs\\runs\\cache\\rv_sp500\\SJB.parquet": "f2e9cbc3b0981dd372ccde479c3a251c3731350e9b46d0dd2ac2531da97585cf",
+    "outputs\\runs\\cache\\rv_sp500\\SPXU.parquet": "8d9befca70cb48bcac712d2e0aeef27e9f52819bec3441eb2f606fb5897b00b0",
+    "outputs\\runs\\cache\\rv_sp500\\SPY.parquet": "267e48ab348dcf71003d73247e7ac692c5c73fab176db9bd2248cdd16f0a2f2a",
+    "outputs\\runs\\cache\\rv_sp500\\SQQQ.parquet": "56dcf6961099f31c5da4f335cb8bc0959359488e77f260bc66bf34a7f7fe8678",
+    "outputs\\runs\\cache\\rv_sp500\\TBF.parquet": "eca13bf99b7d73db9c2aecbd539007d48f87907b1262aa2db6e634cd9b5a25ea",
+    "outputs\\runs\\cache\\rv_sp500\\TBT.parquet": "9ffed0a3af4cd1a814131b0a5626d594d844a321fca26f18e121d29131b0f9e6",
+    "outputs\\runs\\cache\\rv_sp500\\TLT.parquet": "7895675fc1af357d7ceed11851761789c3eae74d2e870ab8ff547569f2fd279a",
+    "outputs\\runs\\cache\\rv_sp500\\TMF.parquet": "150765f77252388a2abd593e417fc2c52762ee125cdb3db2256ffdeb897b9f24",
+    "outputs\\runs\\cache\\rv_sp500\\TMV.parquet": "d1886a972bb564479ad0a683f038e5cca2c52d006368de0c35b6ea90901ea789",
+    "outputs\\runs\\cache\\rv_sp500\\TWM.parquet": "89625eaa19c33f03085871c59c0c9d5a7bfa13bc55c8bfa5af9f0608abc0bb98",
+    "outputs\\runs\\cache\\rv_sp500\\TZA.parquet": "28fac592d35dbed51436f793c37c0fb58cf9a031040821d979ed59444361317b",
+    "outputs\\runs\\cache\\rv_sp500\\UCO.parquet": "570a76add3510de23466e029a30a828ed8bbcd09cafb774216b1580057d5ea0c",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\DIA.json": "8feef00f53f226d7c19ce677000bd68325a99963b50bb18aacd96666ff430873",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\DOG.json": "3254b5c64c02ff7480b91d7af3b2066919555d7b0d6bb715629db857cb086e91",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\DXD.json": "506fc0affdebbc93a2e33a4754ec1d47a6162971564b8660e640d37c6a060891",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\HYG.json": "c6eb92511e9ca81341466378b6a47f3da595b6e88280d4736cc252ea94ae922e",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\IWM.json": "8b09e041aa63e161040f5bd98a68abe0cb0582028a902b18103e35f6d9f65805",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\PSQ.json": "abb0ecb35d91a0e6e358641d67d4baf6dd7f8769a25f220b65ad9265398566f6",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\QID.json": "9ebda9b75b3dc372cee68cc59df7c4170ef997c76217d985fedf7ff1b44a538a",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\QQQ.json": "e3a7dd712b98e0066072bd6ee93fbce811566e2f36d636d31d610b60abb92c9c",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\RWM.json": "df5d08a62290551ee7083cbaecee047e1839ea6e25fcb42767279c3d417f394e",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SCO.json": "c6d449595c413328a773709c1f5e90e385424a810f397b7a5484fbfef77dfea9",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SDS.json": "952ecc58b212f12208e057b98f7c1ea01ed02b8caddbd8d6b6a625704e12670a",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SH.json": "19239de9cd9cf9d3b506ad6993a43d2c2e8e28763f3758a55cb7ecf8846852f3",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SJB.json": "89a933d7371c31b932875e6f2431da20f22ec9eb95551e64574d8a9de7b3881e",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SPXU.json": "0072584d3382e799a13f1bab19b87f1946095b5b64237b8e7bff1f502b3978bc",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SPY.json": "2476d637090d863bcf3be41a2e874132fc2f1f9ac1d0c1f5d8b0b6edce8b7d8f",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\SQQQ.json": "62d38409644c8f69f9da7fd72aebcab848a27958881874102c80f9b80c325ce9",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TBF.json": "bcd2e33df2f4583e64562533bbd93ed070bc83f81215d973ce865388d8b525a8",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TBT.json": "38374cb7dfe1992f15cceee391cca13906be8eda39fd4a4bc53662cc1b5c6e45",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TLT.json": "6f01da9d937b948a9b0c0de0fea6864476b3199b8afb2aad4bc5a1d6e81f0235",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TMF.json": "efc91c273df5b3e3cb02bbfb9a72021da65c830e7652ee4ec0c393e316302ae3",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TMV.json": "4f4219c307d51b331f4b03199e3bbb4af496986f8b5f8cf4c0c13da03795b577",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TWM.json": "6848d854fd6a9361b47af2a19005533f7abb037175c638873e0f5f42ad81819f",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\TZA.json": "6f2572019fc89c8ddcaa47432908c4cd2192a6f8d3bcd69c402851e07a22617c",
+    "outputs\\runs\\cache\\inverse_tracking_daily\\UCO.json": "3df59df2aad6bacd0728a218a39a573aab7a1654bea173ac5d92954790344f89"
+  },
+  "train": [
+    "2020-01-07",
+    "2023-01-05"
+  ],
+  "periods": {
+    "validation": [
+      "2023-01-06",
+      "2023-12-29"
+    ],
+    "test": [
+      "2024-01-02",
+      "2025-12-31"
+    ]
+  },
+  "packages": {
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "pyarrow": "23.0.1",
+    "statsmodels": "0.14.6",
+    "scipy": "1.17.1"
+  }
+}

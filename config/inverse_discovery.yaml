@@ -1,0 +1,52 @@
+# A fixed pre-study ETF cohort, independent of which funds survived until today.
+as_of: '2013-12-31'
+sources:
+  - https://www.sec.gov/Archives/edgar/data/312070/000119312513014650/d467255dfwp.htm
+  - https://www.sec.gov/Archives/edgar/data/1415311/000119312512089351/d226661d10k.htm
+# A multiplier describes the designed direction and daily target where applicable.
+# Positive funds within a group also serve as tradable benchmark proxies.
+families:
+  us_large: {SPY: 1, SH: -1, SDS: -2, SPXU: -3, RSW: -2}
+  nasdaq100: {QQQ: 1, PSQ: -1, QID: -2, SQQQ: -3}
+  dow30: {DIA: 1, DOG: -1, DXD: -2}
+  us_small: {IWM: 1, RWM: -1, TWM: -2, TZA: -3}
+  emerging_equity: {EEM: 1, EUM: -1}
+  developed_equity: {EFA: 1, EFZ: -1}
+  us_mid: {MDY: 1, MYY: -1}
+  long_treasury: {TLT: 1, TBF: -1, TBT: -2}
+  direxion_long_treasury: {TMF: 3, TMV: -3}
+  intermediate_treasury: {IEF: 1, TBX: -1, PST: -2}
+  short_treasury: {SHY: 1}
+  inflation_linked: {TIP: 1}
+  investment_grade_credit: {LQD: 1}
+  high_yield_credit: {HYG: 1, SJB: -1}
+  aggregate_bonds: {AGG: 1, BND: 1}
+  mortgage_bonds: {MBB: 1}
+  municipal_bonds: {MUB: 1}
+  emerging_market_debt: {EMB: 1}
+  euro: {FXE: 1, ULE: 2, EUO: -2}
+  yen: {FXY: 1, YCS: -2}
+  australian_dollar: {FXA: 1}
+  canadian_dollar: {FXC: 1}
+  swiss_franc: {FXF: 1}
+  british_pound: {FXB: 1}
+  renminbi: {CYB: 1}
+  gold: {GLD: 1, GLL: -2}
+  silver: {SLV: 1, ZSL: -2}
+  dollar: {UUP: 1, UDN: -1}
+  crude: {UCO: 2, SCO: -2}
+  wti_futures: {USO: 1}
+  natural_gas: {UNG: 1}
+  commodity_basket: {DBC: 1}
+  agriculture: {DBA: 1}
+  corn: {CORN: 1}
+  wheat: {WEAT: 1}
+  platinum: {PPLT: 1}
+  palladium: {PALL: 1}
+  copper: {CPER: 1}
+sectors: [XLK, XLE, XLF, XLV]
+asset_classes:
+  equity: [us_large, nasdaq100, dow30, us_small, emerging_equity, developed_equity, us_mid]
+  fixed_income: [long_treasury, direxion_long_treasury, intermediate_treasury, short_treasury, inflation_linked, investment_grade_credit, high_yield_credit, aggregate_bonds, mortgage_bonds, municipal_bonds, emerging_market_debt]
+  currency: [dollar, euro, yen, australian_dollar, canadian_dollar, swiss_franc, british_pound, renminbi]
+  commodity: [crude, wti_futures, natural_gas, commodity_basket, agriculture, corn, wheat, gold, silver, platinum, palladium, copper]

@@ -1,0 +1,57 @@
+{
+  "sha256": {
+    "C:\\Users\\kwood\\Projects\\Inverse-Pairs-Trading-RL\\inverse_pair_discovery.py": "3f02809b682d5f79a0997b45931e2d56f595bd2c903f23e50e3ca7e38017ac16",
+    "config\\inverse_discovery.yaml": "3f3f7cd802507fa9f45e925b4384824784ab3c08b0b0805350b84ef32db2ecb7",
+    "outputs\\daily_validation\\cache\\yfinance_daily_500plus_2014_2024.csv": "90e46104c6f95fc81451f8947916cc60ee54221d6acc2f7fa1961c8650bffe16",
+    "outputs\\runs\\residual_control_liquidity_50k\\folds.csv": "6a20bee5d0aef5442a7b1487ded3516daed7207a3808e7fe8f9c808658f3197e",
+    "relative_value_horizons.py": "89a39de92c12d6ca6cb3bb602b530afcd3df31266f0469b006a65a1ca403e9e6",
+    "data\\fetch_inverse_etfs.py": "c2397ff65cfacf140fdc7463b25a24c721f822e5b3a88a5fae8e2e2e233c65bb",
+    "outputs\\runs\\cache\\inverse_discovery\\DOG.json": "97cddf1d0a797429927cdf2e45a7869acf77b64a0e4017f367febd6df543a5ad",
+    "outputs\\runs\\cache\\inverse_discovery\\DXD.json": "f58ebedaeb012d0b0e0db78209b56327f802547e055425e17ba2ccbab32a85df",
+    "outputs\\runs\\cache\\inverse_discovery\\EFZ.json": "d3f9f59e382ac9d871ff2c1c842351f4cfb40a93e4c23c477fcb5b3813539fbf",
+    "outputs\\runs\\cache\\inverse_discovery\\EUM.json": "1469dda48443785c4aa09f73562232d4f2e3b44214920a653eb7bcc37d5f600f",
+    "outputs\\runs\\cache\\inverse_discovery\\GLL.json": "c5182189949225f11323472d9b2cdac46bc3633b75b87d9bcf5535738bfeefc7",
+    "outputs\\runs\\cache\\inverse_discovery\\MYY.json": "9f0d71cb240c4eda329182e87ec154e60c650c673cbf809ea15acf227c09ec30",
+    "outputs\\runs\\cache\\inverse_discovery\\PSQ.json": "c1aef06d04b3e39628b3a62810116b3e89325d0ca2d4c20191b63ac037f9b1ed",
+    "outputs\\runs\\cache\\inverse_discovery\\QID.json": "3f8d534454086b566f995487b258efc27067a8d9f09e862f0424a4d027f2c737",
+    "outputs\\runs\\cache\\inverse_discovery\\RSW.json": "6e963399cf06696d57dec6a55ec982dceb40f35d580cc7ed761ffdced93da427",
+    "outputs\\runs\\cache\\inverse_discovery\\RWM.json": "ca0e2e54e8be63975d3a7df862e39b3433a1ac0e6f28a5e9492c78d64434c29c",
+    "outputs\\runs\\cache\\inverse_discovery\\SCO.json": "a73867db27ea31cab8978fc7ab384c0457ef1d76e43794923ea4f2836b9c9793",
+    "outputs\\runs\\cache\\inverse_discovery\\SDS.json": "fd14a424bee7fc711567c6b887fd1e52ab12aa09a1dc3926b75cced16474a23f",
+    "outputs\\runs\\cache\\inverse_discovery\\SH.json": "e88384232e98aeb65cea2fd3bc7d48babac88a365b3ff1a4dce04fbc8c68062f",
+    "outputs\\runs\\cache\\inverse_discovery\\SPXU.json": "ba97611a51b3d52b7d06db41eb43ba951f6e5babb77b60dcaac7ee93241b7805",
+    "outputs\\runs\\cache\\inverse_discovery\\SQQQ.json": "4a5176e9ff974bb251e15278a7f468ac894591ef8d68de7b9a902a94d281a90f",
+    "outputs\\runs\\cache\\inverse_discovery\\TWM.json": "31e1fdf71d73ade2dfcb0820f0553eca1bd692f8127b2bfbd1bc4a27c82a66f0",
+    "outputs\\runs\\cache\\inverse_discovery\\TZA.json": "d072e9b139af9263a40d2e331b28cd8f9fb5c51732843f6be7c71a3e730332f0",
+    "outputs\\runs\\cache\\inverse_discovery\\UCO.json": "e68f7ede80aab42a04a6f48e2da9fe00e8d7d39e39200e1a78d88db02bb6bdb6",
+    "outputs\\runs\\cache\\inverse_discovery\\ZSL.json": "44bd19505b76535dd77b81517c1b6b2ed1ef44ee8a222b49da553d2fa13ef9fc",
+    "outputs\\runs\\cache\\rv_sp500\\prices.parquet": "02ed2e4f3fd409f1a2e3ecd9d7c8a54e26b85d15a521e022b351868b75f07ddc",
+    "outputs\\runs\\cache\\rv_sp500\\membership_intervals.parquet": "83141f0c7d9eb69793db60694432426ea94eaa8c92e7e50c741bb5f605c48d54",
+    "outputs\\runs\\cache\\rv_sp500\\no_trade_days.csv": "e6ce9efaeea91b3e3e8198a6a3b20bf56d217e82fe83c83b133fab27492de2f1"
+  },
+  "dependencies": {
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "scipy": "1.17.1",
+    "statsmodels": "0.14.6",
+    "pyarrow": "23.0.1",
+    "curl_cffi": "0.15.0"
+  },
+  "etf_sources": [
+    "https://www.sec.gov/Archives/edgar/data/312070/000119312513014650/d467255dfwp.htm",
+    "https://www.sec.gov/Archives/edgar/data/1415311/000119312512089351/d226661d10k.htm"
+  ],
+  "correlation_threshold": -0.8,
+  "minimum_adv": 10000000,
+  "capital": 100000.0,
+  "target": 0.25,
+  "fee": 0.0002,
+  "annual_funding": 0.02,
+  "annual_borrow": 0.005,
+  "participation": 0.01,
+  "horizons": [
+    1,
+    5,
+    10
+  ]
+}
