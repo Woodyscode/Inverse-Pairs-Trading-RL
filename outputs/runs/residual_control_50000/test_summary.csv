@@ -1,0 +1,8 @@
+policy,net_return,sharpe,max_drawdown,gross_exposure,turnover,costs,short_freq,flat_freq,long_freq,entropy,capacity_p10,fill_rate,direction_match
+cash,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+ppo,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+ppo_ridge,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+random,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+ridge,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+xgboost,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,
+zscore,0.0,0.0,0.0,0.0,0.0,0.0,,,,,,,

@@ -1,0 +1,8 @@
+{
+  "status": "incomplete",
+  "stage": "historical training, window 8",
+  "reason": "The execution-day participation cap prevented a randomized training episode from settling its remaining inventory, even with 20 sessions reserved for liquidation.",
+  "assumption": "Rebalance orders were capped but total inventory could build beyond a single session of trailing liquidity.",
+  "completed_followup_directory": "../residual_control_liquidity_50k",
+  "followup_change": "The strict controller also sizes the target inventory to the trailing one-session exit capacity."
+}

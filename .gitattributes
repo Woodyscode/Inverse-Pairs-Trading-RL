@@ -1,0 +1,6 @@
+# Preserve the published bytes for research manifests, ledgers and model checkpoints.
+outputs/runs/** -text
+*.parquet binary
+*.joblib binary
+*.zip binary
+*.gz binary
