@@ -786,6 +786,7 @@ def fetch_data():
     from concurrent.futures import ThreadPoolExecutor
 
     SNAPSHOT.mkdir(exist_ok=True, parents=True)
+    CACHE.mkdir(exist_ok=True, parents=True)
     with ThreadPoolExecutor(3) as pool:
         list(pool.map(lambda s: fetch_daily(s, SNAPSHOT, 1792800000), COHORT))
         list(pool.map(fetch, COHORT))
